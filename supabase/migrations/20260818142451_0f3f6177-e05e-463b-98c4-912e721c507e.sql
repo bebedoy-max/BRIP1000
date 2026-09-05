@@ -1,0 +1,10 @@
+REVOKE ALL ON FUNCTION public.touch_presence(text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.admin_list_users() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.admin_set_blocked(uuid, boolean) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.admin_delete_user(uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.admin_set_password(uuid, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.touch_presence(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_list_users() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_set_blocked(uuid, boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_delete_user(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_set_password(uuid, text) TO authenticated;
