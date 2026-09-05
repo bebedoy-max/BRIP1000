@@ -209,22 +209,264 @@ function monthRange(value: string) {
   return { from: toIsoDate(first), to: toIsoDate(last) };
 }
 
-/** Rekap jumlah izin, sakit, terlambat, dan tanpa keterangan per pekerja. */
-function ReportPanel({ ukers }: { ukers: { id: string; nama: string }[] }) {
+/** Pilihan periode: mode bulanan atau rentang kustom (saling menonaktifkan). */
+function usePeriod() {
   const months = useMemo(() => monthOptions(), []);
-  const [ukerId, setUkerId] = useState("");
+  const [mode, setMode] = useState<"bulan" | "custom">("bulan");
   const [bulan, setBulan] = useState(months[0]!.value);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+
+  const range = useMemo(() => {
+    if (mode === "custom" && customFrom && customTo) return { from: customFrom, to: customTo };
+    return monthRange(bulan);
+  }, [mode, bulan, customFrom, customTo]);
+
+  return {
+    months,
+    mode,
+    setMode,
+    bulan,
+    setBulan,
+    customFrom,
+    setCustomFrom,
+    customTo,
+    setCustomTo,
+    ...range,
+  };
+}
+
+type Period = ReturnType<typeof usePeriod>;
+
+function PeriodFilter({ p, idPrefix }: { p: Period; idPrefix: string }) {
+  const monthActive = p.mode === "bulan";
+  return (
+    <>
+      <div className="min-w-44">
+        <label className="flex cursor-pointer items-center gap-2 pl-1 text-xs font-bold tracking-wide uppercase">
+          <input
+            type="radio"
+            name={`${idPrefix}-mode`}
+            className="size-4 accent-primary"
+            checked={monthActive}
+            onChange={() => p.setMode("bulan")}
+          />
+          Bulan
+        </label>
+        <select
+          id={`${idPrefix}-bulan`}
+          value={p.bulan}
+          disabled={!monthActive}
+          onChange={(e) => p.setBulan(e.target.value)}
+          className="mt-1 h-10 w-full rounded-full border border-input bg-background px-4 text-sm disabled:opacity-50"
+        >
+          {p.months.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="flex cursor-pointer items-center gap-2 pl-1 text-xs font-bold tracking-wide uppercase">
+          <input
+            type="radio"
+            name={`${idPrefix}-mode`}
+            className="size-4 accent-primary"
+            checked={!monthActive}
+            onChange={() => p.setMode("custom")}
+          />
+          Periode Kustom
+        </label>
+        <div className="mt-1 flex items-center gap-2">
+          <Input
+            type="date"
+            aria-label="Tanggal mulai"
+            className="h-10 rounded-full disabled:opacity-50"
+            disabled={monthActive}
+            value={p.customFrom}
+            onChange={(e) => p.setCustomFrom(e.target.value)}
+          />
+          <Input
+            type="date"
+            aria-label="Tanggal akhir"
+            className="h-10 rounded-full disabled:opacity-50"
+            disabled={monthActive}
+            value={p.customTo}
+            onChange={(e) => p.setCustomTo(e.target.value)}
+          />
+          {!monthActive && (p.customFrom || p.customTo) ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="rounded-full"
+              aria-label="Reset periode kustom"
+              onClick={() => {
+                p.setCustomFrom("");
+                p.setCustomTo("");
+              }}
+            >
+              <X className="size-4" />
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** Rekap total transaksi QRIS per pekerja pada unit kerja & periode terpilih. */
+function QrisReportPanel({ ukers }: { ukers: { id: string; nama: string }[] }) {
+  const [ukerId, setUkerId] = useState("");
+  const period = usePeriod();
+  const { from, to } = period;
+
+  const activeUkerId = ukerId || ukers[0]?.id || "";
+  const activeUker = ukers.find((u) => u.id === activeUkerId);
+
+  const q = useQuery({
+    queryKey: ["doa-pagi", "report", activeUkerId, from, to],
+    enabled: !!activeUkerId,
+    queryFn: () => getDoaPagiReport({ data: { ukerId: activeUkerId, from, to } }),
+  });
+
+  const jabatanMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const e of q.data?.employees ?? []) map.set(e.nama, e.jabatan);
+    return map;
+  }, [q.data]);
+
+  const rows = useMemo(() => {
+    const map = new Map<string, { nama: string; jabatan: string; total: number }>();
+    for (const s of q.data?.sections ?? [])
+      for (const p of s.pekerja)
+        if (!map.has(p)) map.set(p, { nama: p, jabatan: jabatanMap.get(p) ?? "-", total: 0 });
+    for (const r of q.data?.records ?? []) {
+      if (!isQrisFilled(r.qris)) continue;
+      const row = map.get(r.pekerja);
+      if (row) row.total += 1;
+    }
+    return [...map.values()].sort((a, b) => b.total - a.total || a.nama.localeCompare(b.nama));
+  }, [q.data, jabatanMap]);
+
+  async function downloadExcel() {
+    const XLSX = await import("xlsx");
+    const aoa = [
+      ["LAPORAN TRANSAKSI QRIS"],
+      [`Unit Kerja: ${activeUker?.nama ?? "-"}`],
+      [`Periode: ${from} s/d ${to}`],
+      [],
+      ["Nama Pekerja", "Jabatan", "Total Transaksi QRIS"],
+      ...rows.map((r) => [r.nama, r.jabatan, r.total]),
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = [{ wch: 30 }, { wch: 28 }, { wch: 22 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "QRIS");
+    const out = XLSX.write(wb, { bookType: "xlsx", type: "array" }) as ArrayBuffer;
+    const blob = new Blob([out], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `laporan-qris-${from}_${to}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const totalAll = rows.reduce((n, r) => n + r.total, 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="glass-card flex flex-wrap items-end gap-3 p-4">
+        <div className="min-w-52 flex-1">
+          <Label htmlFor="qris-uker" className="pl-4 text-xs font-bold tracking-wide uppercase">
+            Unit Kerja
+          </Label>
+          <select
+            id="qris-uker"
+            value={activeUkerId}
+            onChange={(e) => setUkerId(e.target.value)}
+            className="mt-1 h-10 w-full rounded-full border border-input bg-background px-4 text-sm"
+          >
+            {ukers.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.nama}
+              </option>
+            ))}
+          </select>
+        </div>
+        <PeriodFilter p={period} idPrefix="qris" />
+        <Button
+          type="button"
+          className="h-10 rounded-full px-6"
+          onClick={() => void downloadExcel()}
+          disabled={!rows.length}
+        >
+          Download Excel
+        </Button>
+      </div>
+
+      <div className="glass-card space-y-3 p-4">
+        <p className="text-xs text-muted-foreground">
+          {activeUker?.nama ?? "-"} — periode {from} s/d {to} · total {totalAll} transaksi
+        </p>
+        {q.isLoading ? (
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Memuat laporan QRIS…
+          </p>
+        ) : rows.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[40rem] border-separate border-spacing-2 text-sm">
+              <thead>
+                <tr>
+                  <th className="min-w-[12rem] rounded-full bg-primary/15 px-4 py-2 text-left font-bold text-primary">
+                    Nama Pekerja
+                  </th>
+                  <th className="min-w-[12rem] rounded-full bg-primary/15 px-4 py-2 text-left font-bold text-primary">
+                    Jabatan
+                  </th>
+                  <th className="w-52 rounded-full bg-primary/15 px-3 py-2 text-center font-bold text-primary">
+                    Total Transaksi QRIS
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.nama}>
+                    <td className="rounded-full bg-muted/50 px-4 py-2 font-medium">{r.nama}</td>
+                    <td className="rounded-full bg-muted/50 px-4 py-2 text-muted-foreground">
+                      {r.jabatan}
+                    </td>
+                    <td className="rounded-full bg-muted/40 px-3 py-2 text-center font-semibold">
+                      {r.total}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Belum ada data QRIS pada periode ini.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Rekap jumlah izin, sakit, terlambat, dan tanpa keterangan per pekerja. */
+function ReportPanel({ ukers }: { ukers: { id: string; nama: string }[] }) {
+  const [ukerId, setUkerId] = useState("");
+  const period = usePeriod();
   const [format, setFormat] = useState<"csv" | "xlsx" | "pdf">("pdf");
 
   const activeUkerId = ukerId || ukers[0]?.id || "";
   const activeUker = ukers.find((u) => u.id === activeUkerId);
 
-  const { from, to } = useMemo(() => {
-    if (customFrom && customTo) return { from: customFrom, to: customTo };
-    return monthRange(bulan);
-  }, [bulan, customFrom, customTo]);
+  const { from, to } = period;
+
 
   const q = useQuery({
     queryKey: ["doa-pagi", "report", activeUkerId, from, to],
@@ -455,63 +697,8 @@ function ReportPanel({ ukers }: { ukers: { id: string; nama: string }[] }) {
             ))}
           </select>
         </div>
-        <div className="min-w-44">
-          <Label
-            htmlFor="rep-bulan"
-            className="pl-4 text-xs font-bold uppercase tracking-wide"
-          >
-            Bulan
-          </Label>
-          <select
-            id="rep-bulan"
-            value={bulan}
-            disabled={!!(customFrom && customTo)}
-            onChange={(e) => setBulan(e.target.value)}
-            className="mt-1 h-10 w-full rounded-full border border-input bg-background px-4 text-sm disabled:opacity-50"
-          >
-            {months.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <Label className="pl-4 text-xs font-bold uppercase tracking-wide">
-            Periode Kustom
-          </Label>
-          <div className="mt-1 flex items-center gap-2">
-            <Input
-              type="date"
-              aria-label="Tanggal mulai"
-              className="h-10 rounded-full"
-              value={customFrom}
-              onChange={(e) => setCustomFrom(e.target.value)}
-            />
-            <Input
-              type="date"
-              aria-label="Tanggal akhir"
-              className="h-10 rounded-full"
-              value={customTo}
-              onChange={(e) => setCustomTo(e.target.value)}
-            />
-            {customFrom || customTo ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="rounded-full"
-                aria-label="Reset periode kustom"
-                onClick={() => {
-                  setCustomFrom("");
-                  setCustomTo("");
-                }}
-              >
-                <X className="size-4" />
-              </Button>
-            ) : null}
-          </div>
-        </div>
+        <PeriodFilter p={period} idPrefix="rep" />
+
         <div className="flex flex-col justify-end">
           <select
             id="rep-format"
@@ -633,7 +820,7 @@ function Page() {
     [q.data, activeUkerId],
   );
 
-  const [tab, setTab] = useState<"setting" | "laporan">("setting");
+  const [tab, setTab] = useState<"setting" | "laporan" | "qris">("setting");
   const [form, setForm] = useState<Form | null>(null);
   const [jabatanFilter, setJabatanFilter] = useState("");
 
@@ -703,7 +890,7 @@ function Page() {
         </div>
 
         <div className="inline-flex rounded-full border border-input bg-muted/40 p-1">
-          {(["setting", "laporan"] as const).map((t) => (
+          {(["setting", "laporan", "qris"] as const).map((t) => (
             <button
               key={t}
               type="button"
@@ -714,14 +901,21 @@ function Page() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t === "setting" ? "Pengaturan" : "Laporan Absensi"}
+              {t === "setting"
+                ? "Pengaturan"
+                : t === "laporan"
+                  ? "Laporan Absensi"
+                  : "Laporan QRIS"}
             </button>
           ))}
         </div>
 
         {tab === "laporan" ? (
           <ReportPanel ukers={ukers} />
+        ) : tab === "qris" ? (
+          <QrisReportPanel ukers={ukers} />
         ) : (
+
         <>
         <LogoSettings />
 

@@ -34,7 +34,7 @@ type Group = {
   total: number;
 };
 
-function useDebounced(value: string, ms = 250) {
+function useDebounced(value: string, ms = 350) {
   const [v, setV] = useState(value);
   useEffect(() => {
     const t = setTimeout(() => setV(value), ms);
@@ -43,92 +43,101 @@ function useDebounced(value: string, ms = 250) {
   return v;
 }
 
-/** Cache sederhana per tabel agar pencarian tetap cepat saat mengetik. */
-const TTL = 60_000;
-const tableCache = new Map<string, { at: number; rows: Row[] }>();
+/**
+ * Pencarian dilakukan di server (ilike) supaya cepat: hanya baris yang cocok
+ * yang dikirim ke browser. Yang di-cache hanyalah daftar kolom tiap tabel.
+ */
+const columnCache = new Map<string, Promise<{ text: string[]; numeric: string[] }>>();
 
-async function loadTable(table: string, limit = 1000): Promise<Row[]> {
-  const cached = tableCache.get(table);
-  if (cached && Date.now() - cached.at < TTL) return cached.rows;
-  const { data, error } = await db.from(table).select("*").limit(limit);
-  const rows = error ? [] : ((data ?? []) as Row[]);
-  tableCache.set(table, { at: Date.now(), rows });
-  return rows;
-}
+const SKIP = /^(id|created_at|updated_at|.*_id|.*_url|qr_token|password.*)$/;
 
-/** Semua nilai baris jadi satu teks (angka, boolean, tanggal, teks). */
-function rowText(row: Row): string {
-  const out: string[] = [];
-  for (const [k, v] of Object.entries(row)) {
-    if (v === null || v === undefined) continue;
-    if (k === "id" || k.endsWith("_id") || k.endsWith("_url")) continue;
-    if (typeof v === "object") {
-      out.push(JSON.stringify(v));
-    } else {
-      out.push(String(v));
+function loadColumns(table: string) {
+  const cached = columnCache.get(table);
+  if (cached) return cached;
+  const p = (async () => {
+    const { data } = await db.from(table).select("*").limit(1);
+    const row = ((data ?? [])[0] ?? {}) as Row;
+    const text: string[] = [];
+    const numeric: string[] = [];
+    for (const [k, v] of Object.entries(row)) {
+      if (SKIP.test(k)) continue;
+      if (typeof v === "string") text.push(k);
+      else if (typeof v === "number") numeric.push(k);
     }
-  }
-  return out.join(" ").toLowerCase();
+    return { text, numeric };
+  })();
+  columnCache.set(table, p);
+  return p;
 }
 
-/** Skor relevansi: judul persis > awalan judul > isi baris. */
-function score(title: string, hay: string, terms: string[]): number {
-  const t = title.toLowerCase();
-  let n = 0;
-  for (const term of terms) {
-    if (t === term) n += 100;
-    else if (t.startsWith(term)) n += 50;
-    else if (t.includes(term)) n += 25;
-    else if (hay.includes(term)) n += 5;
-  }
-  return n;
+/** Bersihkan karakter yang merusak sintaks filter PostgREST. */
+const clean = (term: string) => term.replace(/[,().*%\\]/g, " ").trim();
+
+/** Cari id relasi (mis. uker/jabatan) — hasilnya di-cache per kata. */
+const refCache = new Map<string, Promise<string[]>>();
+
+function loadRefIds(table: string, labelColumns: string[], term: string) {
+  const key = `${table}|${labelColumns.join(",")}|${term}`;
+  const cached = refCache.get(key);
+  if (cached) return cached;
+  const p = (async () => {
+    const { data } = await db
+      .from(table)
+      .select("id")
+      .or(labelColumns.map((c) => `${c}.ilike.%${term}%`).join(","))
+      .limit(50);
+    return ((data ?? []) as Row[]).map((r) => String(r["id"]));
+  })();
+  refCache.set(key, p);
+  return p;
 }
 
 async function searchModule(m: SearchModule, terms: string[]): Promise<Group> {
-  const rows = await loadTable(m.table);
-  if (rows.length === 0) return { module: m, hits: [], total: 0 };
+  const cols = await loadColumns(m.table);
+  const searchable = Array.from(new Set([...(m.columns ?? []), ...cols.text]));
+  if (searchable.length === 0) return { module: m, hits: [], total: 0 };
 
-  // Teks label dari tabel relasi (mis. jabatan, unit kerja) per foreign key.
-  const refMaps = new Map<string, Map<string, string>>();
-  for (const ref of m.refs ?? []) {
-    const refRows = await loadTable(ref.table);
-    const byId = new Map<string, string>();
-    for (const r of refRows) {
-      const label = ref.labelColumns
-        .map((c) => (r[c] === null || r[c] === undefined ? "" : String(r[c])))
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      byId.set(String(r["id"]), label);
-    }
-    refMaps.set(ref.column, byId);
-  }
+  // Filter per kata: kolom teks (ilike) + kolom angka (eq) + id hasil relasi.
+  // Semua pencarian relasi dijalankan serentak agar tidak menumpuk waktu tunggu.
+  const filters = await Promise.all(
+    terms.map(async (raw) => {
+      const term = clean(raw);
+      if (!term) return "";
+      const parts = searchable.map((c) => `${c}.ilike.%${term}%`);
+      if (/^\d+$/.test(term)) parts.push(...cols.numeric.map((c) => `${c}.eq.${term}`));
+      const refIds = await Promise.all(
+        (m.refs ?? []).map(async (ref) => ({
+          ref,
+          ids: await loadRefIds(ref.table, ref.labelColumns, term),
+        })),
+      );
+      for (const { ref, ids } of refIds)
+        if (ids.length) parts.push(`${ref.column}.in.(${ids.join(",")})`);
+      return parts.join(",");
+    }),
+  );
+  const active = filters.filter(Boolean);
+  if (active.length === 0) return { module: m, hits: [], total: 0 };
 
-  const matched = rows
-    .map((row) => {
-      let hay = rowText(row);
-      for (const ref of m.refs ?? []) {
-        const label = refMaps.get(ref.column)?.get(String(row[ref.column] ?? ""));
-        if (label) hay += ` ${label}`;
-      }
+  // count "planned" memakai perkiraan perencana query: jauh lebih murah
+  // daripada menghitung seluruh baris yang cocok.
+  let query = db.from(m.table).select("*", { count: "planned" }).limit(5);
+  for (const f of active) query = query.or(f);
+  const { data, count, error } = await query;
+  if (error) return { module: m, hits: [], total: 0 };
 
-      const title = (m.title ? m.title(row) : guessTitle(row)) || guessTitle(row);
-      const ok = terms.every((t) => hay.includes(t));
-      return ok ? { row, title, rank: score(title, hay, terms) } : null;
-    })
-    .filter((x): x is { row: Row; title: string; rank: number } => x !== null)
-    .sort((a, b) => b.rank - a.rank);
-
+  const rows = (data ?? []) as Row[];
   return {
     module: m,
-    total: matched.length,
-    hits: matched.slice(0, 5).map(({ row, title }) => ({
+    total: count ?? rows.length,
+    hits: rows.map((row) => ({
       id: String(row["id"]),
-      title,
+      title: (m.title ? m.title(row) : guessTitle(row)) || guessTitle(row),
       subtitle: m.subtitle?.(row) ?? "",
     })),
   };
 }
+
 
 /**
  * Satu baris hasil pencarian. Bila tabelnya punya label entitas yang bisa
@@ -228,12 +237,16 @@ export function GlobalSearch({ className = "" }: { className?: string }) {
   const results = useQuery({
     queryKey: ["global-search", term, allowed.map((m) => m.route).join(",")],
     enabled: term.length >= 2,
+    staleTime: 60_000,
+    gcTime: 300_000,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const terms = term.toLowerCase().split(/\s+/).filter(Boolean);
       const groups = await Promise.all(allowed.map((m) => searchModule(m, terms)));
       return groups.filter((g) => g.hits.length > 0).sort((a, b) => b.total - a.total);
     },
   });
+
 
   const groups = results.data ?? [];
   const totalHits = groups.reduce((n, g) => n + g.total, 0);

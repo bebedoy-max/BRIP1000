@@ -141,12 +141,13 @@ export function usePresenceHeartbeat() {
 /** Apakah akun yang sedang login sudah diblokir admin. */
 export function useSelfBlocked() {
   return useQuery({
+    // Hasil disimpan agar pindah menu tidak menunggu pemeriksaan ulang;
+    // pemeriksaan tetap berjalan berkala di belakang layar.
     queryKey: ["self_blocked"],
-    refetchInterval: 15_000,
+    refetchInterval: 30_000,
     refetchOnWindowFocus: true,
-    refetchOnMount: "always",
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: 30_000,
+    gcTime: 10 * 60_000,
     queryFn: async () => {
       const { data } = await supabase.auth.getUser();
       const id = data.user?.id;
