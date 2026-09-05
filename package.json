@@ -9,7 +9,9 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "build:node": "vite build --config vite.config.node.ts",
+    "start:node": "node app.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
