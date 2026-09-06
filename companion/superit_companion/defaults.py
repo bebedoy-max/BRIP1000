@@ -3,15 +3,14 @@
 User tidak perlu lagi mengisi URL / anon key secara manual di aplikasi desktop.
 """
 
-DEFAULT_SUPABASE_URL = "https://jbvkcmtloyjuizunrtfv.supabase.co"
+DEFAULT_SUPABASE_URL = "https://supabasekong-q3186z4rpnlpsjl3zl8cesky.207.148.87.40.sslip.io"
 
 DEFAULT_SUPABASE_ANON_KEY = (
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
-    "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpidmtjbXRsb3lqdWl6dW5ydGZ2Iiwicm9sZSI6ImFub24i"
-    "LCJpYXQiOjE3ODY4Nzk4NTUsImV4cCI6MjEwMjQ1NTg1NX0."
-    "lXPFB7NC-upwKqMXm91P6bAYmiKVADEjmcpxKtg_Yd4"
+    "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9."
+    "eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc4ODYyMDQwMCwiZXhwIjo0OTQ0Mjk0MDAwLCJyb2xlIjoiYW5vbiJ9."
+    "k4I2-w4NLFMJH3rbgJGjlfijUeNcHs_SxT8NxlRHeaQ"
 )
 
-DEFAULT_PANEL_URL = "https://project--7009763c-8f34-4a87-b881-a4c7a6e34251.lovable.app"
+DEFAULT_PANEL_URL = "https://www.bripringsewu.web.id"
 
 APP_NAME = "SuperIT Event Uploader"

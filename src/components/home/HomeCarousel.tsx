@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, ImageOff } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -184,18 +184,17 @@ async function loadSlides(): Promise<CarouselData> {
     }
   }
 
-  const withPhotos = slides
-    .map((s) => ({
-      ...s,
-      photos: s.photos.filter((p) => typeof p === "string" && p.trim().length > 0),
-    }))
-    // Slide tanpa foto tidak ditampilkan agar carousel tidak pernah kosong gambar.
-    .filter((s) => s.photos.length > 0);
-
-  const ordered = shuffle(withPhotos).map((s) => ({
+  // Semua konten yang dipilih admin tetap tampil; yang tanpa foto memakai
+  // latar gradien agar jumlah slide sama dengan pengaturan carousel.
+  const cleaned = slides.map((s) => ({
     ...s,
-    photos: s.photos.slice(0, MAX_PHOTOS_PER_SLIDE),
+    photos: s.photos
+      .filter((p) => typeof p === "string" && p.trim().length > 0)
+      .slice(0, MAX_PHOTOS_PER_SLIDE),
   }));
+
+  const ordered = shuffle(cleaned);
+
 
   // Titik fokus dihitung di server sebelum gambar dirender, jadi crop tidak
   // berubah setelah gambar tampil.
@@ -219,15 +218,35 @@ async function loadSlides(): Promise<CarouselData> {
 /** Carousel utama dashboard: event, project IT, dan buku harian IT. */
 export function HomeCarousel() {
   const q = useQuery({ queryKey: ["home-carousel"], queryFn: loadSlides, staleTime: 60_000 });
-  const slides = useMemo(() => q.data?.slides ?? [], [q.data]);
+  const base = useMemo(() => q.data?.slides ?? [], [q.data]);
   const focusMap = useMemo(() => q.data?.focus ?? {}, [q.data]);
+  const [slides, setSlides] = useState<Slide[]>([]);
   const [idx, setIdx] = useState(0);
+  const idxRef = useRef(0);
+  idxRef.current = idx;
 
+  // Urutan diacak saat data siap.
+  useEffect(() => {
+    setSlides(shuffle(base));
+    setIdx(0);
+  }, [base]);
+
+  // Otomatis berpindah slide; setiap putaran selesai urutan diacak ulang
+  // supaya tampilan tidak monoton.
   useEffect(() => {
     if (slides.length < 2) return;
-    const t = setInterval(() => setIdx((i) => (i + 1) % slides.length), 6000);
+    const t = setInterval(() => {
+      const next = idxRef.current + 1;
+      if (next >= slides.length) {
+        setSlides((s) => shuffle(s));
+        setIdx(0);
+      } else {
+        setIdx(next);
+      }
+    }, 6000);
     return () => clearInterval(t);
   }, [slides.length]);
+
 
   // Foto per slide dipilih sekali (stabil) supaya gambar tidak berganti di
   // tengah transisi. Foto dengan wajah terdeteksi diutamakan.

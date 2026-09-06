@@ -1,7 +1,17 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Image as ImageIcon, Loader2, Plus, Save, Sunrise, Trash2, X } from "lucide-react";
+import {
+  Image as ImageIcon,
+  ListChecks,
+  Loader2,
+  Plus,
+  RotateCcw,
+  Save,
+  Sunrise,
+  Trash2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminPage } from "@/components/AdminLayout";
@@ -12,7 +22,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   defaultDoaLogos,
+  defaultKehadiranOptions,
   doaLogoLabels,
+  formatKehadiranOption,
+  parseKehadiranOption,
   isQrisFilled,
   normalizeDoaLogos,
   toIsoDate,
@@ -23,12 +36,17 @@ import {
 } from "@/lib/doa-pagi-ui";
 import {
   deleteDoaPagiSection,
+  getDoaPagiKehadiranOptions,
   getDoaPagiLogos,
   getDoaPagiReport,
   getDoaPagiSettings,
+  resetDoaPagiData,
+  saveDoaPagiKehadiranOptions,
   saveDoaPagiLogos,
   saveDoaPagiSection,
 } from "@/lib/doa-pagi.functions";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { useRoles } from "@/lib/roles";
 import logoBo from "@/assets/doa/b1000.png";
 import logoBri from "@/assets/doa/bri.png";
 import logoDanantara from "@/assets/doa/danantara.png";
@@ -38,6 +56,48 @@ const fallbackLogo: Record<DoaLogoKey, string> = {
   danantara: logoDanantara,
   bri: logoBri,
 };
+
+/** Tombol khusus Super Admin: kosongkan seluruh data absensi & QRIS. */
+function ResetDataButton() {
+  const qc = useQueryClient();
+  const confirm = useConfirm();
+  const { isSuperadmin, loading } = useRoles();
+
+  const reset = useMutation({
+    mutationFn: () => resetDoaPagiData({}),
+    onSuccess: async (r) => {
+      toast.success(
+        `Data direset: ${r.doaPagi} baris absensi doa pagi & ${r.absensiEvent} data absensi event.`,
+      );
+      await qc.invalidateQueries({ queryKey: ["doa-pagi"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (loading || !isSuperadmin) return null;
+
+  async function ask() {
+    const ok = await confirm({
+      title: "Reset semua data absensi & QRIS?",
+      description:
+        "Seluruh riwayat absensi doa & briefing pagi (termasuk data QRIS) dan data absensi event akan dihapus permanen. Pengaturan bagian, pekerja, dan logo tetap aman.",
+      confirmText: "Ya, reset sekarang",
+      destructive: true,
+    });
+    if (ok) reset.mutate();
+  }
+
+  return (
+    <Button variant="destructive" onClick={() => void ask()} disabled={reset.isPending}>
+      {reset.isPending ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : (
+        <RotateCcw className="size-4" />
+      )}
+      Reset Data Absensi & QRIS
+    </Button>
+  );
+}
 
 /** Editor logo header tampilan absensi: ganti gambar, ukuran, dan posisi. */
 function LogoSettings() {
@@ -82,10 +142,17 @@ function LogoSettings() {
             Ganti gambar, atur ukuran, dan geser posisi logo BRI, Danantara, serta BO Pringsewu.
           </p>
         </div>
-        <Button onClick={() => save.mutate(logos)} disabled={save.isPending}>
-          {save.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-          Simpan Logo
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <ResetDataButton />
+          <Button onClick={() => save.mutate(logos)} disabled={save.isPending}>
+            {save.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Save className="size-4" />
+            )}
+            Simpan Logo
+          </Button>
+        </div>
       </div>
 
       {q.isLoading ? (
@@ -171,6 +238,93 @@ function LogoSettings() {
               </div>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Pengaturan pilihan kolom kehadiran: format "[kode]Label". */
+function KehadiranSettings() {
+  const qc = useQueryClient();
+  const q = useQuery({
+    queryKey: ["doa-pagi", "kehadiran-options"],
+    queryFn: () => getDoaPagiKehadiranOptions(),
+  });
+  const [draft, setDraft] = useState<string[] | null>(null);
+  const rows = draft ?? (q.data?.options ?? defaultKehadiranOptions).map(formatKehadiranOption);
+
+  const save = useMutation({
+    mutationFn: (values: string[]) =>
+      saveDoaPagiKehadiranOptions({
+        data: {
+          options: values
+            .map(parseKehadiranOption)
+            .filter((o) => o.label.trim().length > 0),
+        },
+      }),
+    onSuccess: async () => {
+      toast.success("Pilihan kehadiran tersimpan.");
+      setDraft(null);
+      await qc.invalidateQueries({ queryKey: ["doa-pagi", "kehadiran-options"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  function setRow(i: number, value: string) {
+    setDraft(rows.map((r, idx) => (idx === i ? value : r)));
+  }
+
+  return (
+    <div className="glass-card space-y-4 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="flex items-center gap-2 font-semibold">
+            <ListChecks className="size-4" /> Pilihan Kolom Kehadiran
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Tulis dengan format <span className="font-mono">[kode]Isi pilihan</span>, contoh{" "}
+            <span className="font-mono">[bh]Belum Hadir</span> atau{" "}
+            <span className="font-mono">[un]Di BRI Unit</span>. Kode yang diketik di kolom Absen
+            Qris lalu Enter akan otomatis mengisi kolom Kehadiran.
+          </p>
+        </div>
+        <Button onClick={() => save.mutate(rows)} disabled={save.isPending}>
+          {save.isPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Save className="size-4" />
+          )}
+          Simpan Pilihan
+        </Button>
+      </div>
+
+      {q.isLoading ? (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" /> Memuat pilihan kehadiran…
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((value, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input
+                value={value}
+                placeholder="[kode]Isi pilihan"
+                onChange={(e) => setRow(i, e.target.value)}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Hapus pilihan"
+                onClick={() => setDraft(rows.filter((_, idx) => idx !== i))}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          ))}
+          <Button variant="outline" onClick={() => setDraft([...rows, ""])}>
+            <Plus className="size-4" /> Tambah Pilihan
+          </Button>
         </div>
       )}
     </div>
@@ -319,6 +473,7 @@ function PeriodFilter({ p, idPrefix }: { p: Period; idPrefix: string }) {
 /** Rekap total transaksi QRIS per pekerja pada unit kerja & periode terpilih. */
 function QrisReportPanel({ ukers }: { ukers: { id: string; nama: string }[] }) {
   const [ukerId, setUkerId] = useState("");
+  const [format, setFormat] = useState<"csv" | "xlsx" | "pdf">("pdf");
   const period = usePeriod();
   const { from, to } = period;
 
@@ -350,30 +505,139 @@ function QrisReportPanel({ ukers }: { ukers: { id: string; nama: string }[] }) {
     return [...map.values()].sort((a, b) => b.total - a.total || a.nama.localeCompare(b.nama));
   }, [q.data, jabatanMap]);
 
+  const periodeLabel = `${from} s/d ${to}`;
+  const fileBase = `laporan-qris-${(activeUker?.nama ?? "uker").replace(/\s+/g, "-").toLowerCase()}-${from}_${to}`;
+  const headers = ["Nama Pekerja", "Jabatan", "Total Transaksi QRIS"];
+  const bodyRows = () => rows.map((r) => [r.nama, r.jabatan, r.total]);
+
+  function saveBlob(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadCsv() {
+    const csv = [headers, ...bodyRows()]
+      .map((line) => line.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    saveBlob(new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }), `${fileBase}.csv`);
+  }
+
   async function downloadExcel() {
     const XLSX = await import("xlsx");
     const aoa = [
       ["LAPORAN TRANSAKSI QRIS"],
       [`Unit Kerja: ${activeUker?.nama ?? "-"}`],
-      [`Periode: ${from} s/d ${to}`],
+      [`Periode: ${periodeLabel}`],
       [],
-      ["Nama Pekerja", "Jabatan", "Total Transaksi QRIS"],
-      ...rows.map((r) => [r.nama, r.jabatan, r.total]),
+      headers,
+      ...bodyRows(),
     ];
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     ws["!cols"] = [{ wch: 30 }, { wch: 28 }, { wch: 22 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "QRIS");
     const out = XLSX.write(wb, { bookType: "xlsx", type: "array" }) as ArrayBuffer;
-    const blob = new Blob([out], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    saveBlob(
+      new Blob([out], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+      `${fileBase}.xlsx`,
+    );
+  }
+
+  /** Ekspor PDF bergaya BRI: header gradasi, kartu ringkasan, tabel bergaris. */
+  async function downloadPdf() {
+    const [{ default: JsPDF }, { default: autoTable }] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
+    const doc = new JsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+    const W = doc.internal.pageSize.getWidth();
+    const navy: [number, number, number] = [0, 60, 120];
+    const orange: [number, number, number] = [243, 112, 33];
+
+    for (let i = 0; i < 90; i += 1) {
+      const t = i / 90;
+      doc.setFillColor(
+        Math.round(navy[0] + (0 - navy[0]) * t * 0.2 + 10 * t),
+        Math.round(navy[1] + 40 * t),
+        Math.round(navy[2] + 50 * t),
+      );
+      doc.rect(0, i, W, 1, "F");
+    }
+    doc.setFillColor(...orange);
+    doc.rect(0, 90, W, 5, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(17);
+    doc.text("LAPORAN TRANSAKSI QRIS", 40, 44);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.text(`${activeUker?.nama ?? "-"}  •  Periode ${periodeLabel}`, 40, 68);
+
+    const total = rows.reduce((n, r) => n + r.total, 0);
+    const cards: [string, number][] = [
+      ["Total Transaksi QRIS", total],
+      ["Jumlah Pekerja", rows.length],
+    ];
+    const cardW = (W - 80 - 10) / 2;
+    cards.forEach(([label, value], i) => {
+      const x = 40 + i * (cardW + 10);
+      doc.setFillColor(244, 247, 252);
+      doc.roundedRect(x, 112, cardW, 52, 8, 8, "F");
+      doc.setFillColor(...orange);
+      doc.roundedRect(x, 112, 4, 52, 2, 2, "F");
+      doc.setTextColor(110, 120, 135);
+      doc.setFontSize(9);
+      doc.text(label.toUpperCase(), x + 14, 132);
+      doc.setTextColor(...navy);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(17);
+      doc.text(String(value), x + 14, 154);
+      doc.setFont("helvetica", "normal");
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `laporan-qris-${from}_${to}.xlsx`;
-    a.click();
-    URL.revokeObjectURL(url);
+
+    autoTable(doc, {
+      startY: 182,
+      head: [headers],
+      body: bodyRows().map((r) => r.map(String)),
+      theme: "grid",
+      styles: { font: "helvetica", fontSize: 10, cellPadding: 7, lineColor: [226, 232, 240] },
+      headStyles: { fillColor: navy, textColor: 255, fontStyle: "bold", halign: "center" },
+      alternateRowStyles: { fillColor: [246, 249, 253] },
+      columnStyles: {
+        0: { halign: "left" },
+        1: { halign: "left" },
+        2: { halign: "center", cellWidth: 130 },
+      },
+      margin: { left: 40, right: 40, bottom: 46 },
+      didDrawPage: () => {
+        const H = doc.internal.pageSize.getHeight();
+        doc.setDrawColor(...orange);
+        doc.setLineWidth(1);
+        doc.line(40, H - 34, W - 40, H - 34);
+        doc.setFontSize(8);
+        doc.setTextColor(130, 138, 150);
+        doc.text("BRI BO Pringsewu — SuperIT Apps", 40, H - 20);
+        doc.text(`Dicetak ${new Date().toLocaleString("id-ID")}`, W - 40, H - 20, {
+          align: "right",
+        });
+      },
+    });
+
+    doc.save(`${fileBase}.pdf`);
+  }
+
+  function download() {
+    if (!rows.length) return;
+    if (format === "xlsx") void downloadExcel();
+    else if (format === "pdf") void downloadPdf();
+    else downloadCsv();
   }
 
   const totalAll = rows.reduce((n, r) => n + r.total, 0);
@@ -399,13 +663,26 @@ function QrisReportPanel({ ukers }: { ukers: { id: string; nama: string }[] }) {
           </select>
         </div>
         <PeriodFilter p={period} idPrefix="qris" />
+        <div className="flex flex-col justify-end">
+          <select
+            id="qris-format"
+            aria-label="Format laporan QRIS"
+            value={format}
+            onChange={(e) => setFormat(e.target.value as "csv" | "xlsx" | "pdf")}
+            className="h-10 rounded-full border border-input bg-background px-4 text-sm"
+          >
+            <option value="pdf">PDF</option>
+            <option value="xlsx">Excel (.xlsx)</option>
+            <option value="csv">CSV</option>
+          </select>
+        </div>
         <Button
           type="button"
           className="h-10 rounded-full px-6"
-          onClick={() => void downloadExcel()}
+          onClick={download}
           disabled={!rows.length}
         >
-          Download Excel
+          Download Laporan
         </Button>
       </div>
 
@@ -918,6 +1195,7 @@ function Page() {
 
         <>
         <LogoSettings />
+        <KehadiranSettings />
 
         {q.isLoading ? (
           <p className="flex items-center gap-2 text-sm text-muted-foreground">

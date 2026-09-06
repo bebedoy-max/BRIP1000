@@ -10,7 +10,19 @@ import { supabase } from "@/lib/supabase";
 
 
 // Dynamic table names need an untyped client.
+import { sortByUker } from "@/lib/uker-order";
+
 const db = supabase as unknown as SupabaseClient;
+
+/** Urutkan baris uker (Kantor Cabang → KCP → Unit) bila datanya memang uker. */
+function sortUkerRows<T extends Record<string, unknown>>(rows: T[]): T[] {
+  if (!rows.length || !("nama_uker" in rows[0]!)) return rows;
+  return sortByUker(
+    rows,
+    (r) => (r["nama_uker"] as string | null) ?? null,
+    (r) => (r["tipe"] as string | null) ?? null,
+  );
+}
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -307,14 +319,15 @@ export function ResourceManager({
           .order(orderBy, { ascending: false })
           .range(from, from + pageSize! - 1);
         if (error) throw error;
-        return { rows: (data ?? []) as Row[], count: count ?? 0 };
+        return { rows: sortUkerRows((data ?? []) as Row[]), count: count ?? 0 };
       }
       const { data, error } = await db
         .from(table)
         .select("*")
         .order(orderBy, { ascending: false });
       if (error) throw error;
-      return { rows: (data ?? []) as Row[], count: (data ?? []).length };
+      const rows = sortUkerRows((data ?? []) as Row[]);
+      return { rows, count: rows.length };
     },
     placeholderData: (prev) => prev,
   });
@@ -329,7 +342,7 @@ export function ResourceManager({
         .select("id, kode_uker, nama_uker")
         .order("kode_uker");
       if (error) throw error;
-      return (data ?? []) as Row[];
+      return sortUkerRows((data ?? []) as Row[]);
     },
   });
 
@@ -363,7 +376,7 @@ export function ResourceManager({
         const select = ["id", col, ...new Set(extras)].join(", ");
         const { data, error } = await db.from(f.refTable!).select(select).order(col);
         if (error) throw error;
-        out[f.key] = (data ?? []) as unknown as Row[];
+        out[f.key] = sortUkerRows((data ?? []) as unknown as Row[]);
       }
       return out;
     },

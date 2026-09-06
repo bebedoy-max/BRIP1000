@@ -1,6 +1,11 @@
 /** Helper server-only untuk Absensi, Doa & Briefing Pagi. */
 import { normalizeDoaLogos } from "@/lib/doa-pagi-ui";
-import type { DoaLogoSettings, DoaPagiRecord, DoaPagiSection } from "@/lib/doa-pagi-ui";
+import type {
+  DoaLogoSettings,
+  DoaPagiRecord,
+  DoaPagiSection,
+  KehadiranOption,
+} from "@/lib/doa-pagi-ui";
 
 type Db = { from: (t: string) => any };
 
@@ -30,6 +35,32 @@ export async function isPanelAdmin(userId: string) {
   return roles.includes("superadmin") || roles.includes("it_admin");
 }
 
+/** Hanya Super Admin yang boleh mereset seluruh data. */
+export async function isSuperAdmin(userId: string) {
+  const db = await admin();
+  const { data } = await db.from("user_roles").select("role").eq("user_id", userId);
+  return (data ?? []).some((r: { role: string }) => r.role === "superadmin");
+}
+
+/** Kosongkan seluruh data absensi doa pagi (termasuk QRIS) dan absensi event. */
+export async function resetAbsensiQrisData(userId: string) {
+  if (!(await isSuperAdmin(userId)))
+    throw new Error("Hanya Super Admin yang boleh mereset data absensi & QRIS.");
+  const db = await admin();
+  const out = { doaPagi: 0, absensiEvent: 0 };
+  const doa = await db
+    .from("doa_pagi_absensi")
+    .delete()
+    .not("section_id", "is", null)
+    .select("section_id");
+  if (doa.error) throw new Error(doa.error.message);
+  out.doaPagi = (doa.data ?? []).length;
+  const ev = await db.from("absensi_entries").delete().not("id", "is", null).select("id");
+  if (ev.error) throw new Error(ev.error.message);
+  out.absensiEvent = (ev.data ?? []).length;
+  return out;
+}
+
 export async function assertAdmin(userId: string) {
   if (!(await isPanelAdmin(userId))) throw new Error("Akses admin diperlukan.");
 }
@@ -41,10 +72,14 @@ export async function listUkers(): Promise<{ id: string; nama: string }[]> {
     .select("id,nama_uker")
     .order("nama_uker", { ascending: true });
   if (error) throw new Error(error.message);
-  return (data ?? []).map((r: Record<string, any>) => ({
-    id: String(r["id"]),
-    nama: String(r["nama_uker"] ?? ""),
-  }));
+  const { sortByUker } = await import("@/lib/uker-order");
+  return sortByUker(
+    (data ?? []).map((r: Record<string, any>) => ({
+      id: String(r["id"]),
+      nama: String(r["nama_uker"] ?? ""),
+    })),
+    (u) => u.nama,
+  );
 }
 
 /** Daftar pekerja untuk dipilih pada pengaturan bagian. */
@@ -266,4 +301,30 @@ export async function listRecordsRange(
     kehadiran: String(r["kehadiran"] ?? "Hadir"),
   }));
   return { sections, records, employees };
+}
+
+/** Pilihan kolom kehadiran yang bisa diatur admin. */
+export async function getKehadiranOptions(): Promise<KehadiranOption[]> {
+  const { normalizeKehadiranOptions } = await import("@/lib/doa-pagi-ui");
+  const db = await admin();
+  const { data } = await db
+    .from("doa_pagi_kehadiran_options")
+    .select("data")
+    .eq("id", "default")
+    .maybeSingle();
+  return normalizeKehadiranOptions((data as { data?: unknown } | null)?.data);
+}
+
+export async function saveKehadiranOptions(options: KehadiranOption[]) {
+  const { normalizeKehadiranOptions } = await import("@/lib/doa-pagi-ui");
+  const db = await admin();
+  const { error } = await db.from("doa_pagi_kehadiran_options").upsert(
+    {
+      id: "default",
+      data: normalizeKehadiranOptions(options),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "id" },
+  );
+  if (error) throw new Error(error.message);
 }

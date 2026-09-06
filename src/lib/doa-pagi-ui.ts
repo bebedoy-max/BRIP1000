@@ -65,6 +65,66 @@ export function shortcutFor(value: string): Kehadiran | null {
   return kehadiranShortcuts[value.trim().toLowerCase()] ?? null;
 }
 
+/** Satu pilihan kehadiran yang bisa diatur admin: kode singkat + label. */
+export type KehadiranOption = { shortcut: string; label: string };
+
+/** Daftar pilihan bawaan (dipakai bila admin belum mengatur apa pun). */
+export const defaultKehadiranOptions: KehadiranOption[] = [
+  { shortcut: "h", label: "Hadir" },
+  { shortcut: "bh", label: "Belum Hadir" },
+  { shortcut: "sakit", label: "Sakit" },
+  { shortcut: "cuti", label: "Cuti" },
+  { shortcut: "zoom", label: "Zoom" },
+  { shortcut: "un", label: "Di BRI Unit" },
+  { shortcut: "kanwil", label: "Ke Kanwil" },
+  { shortcut: "kpknl", label: "Ke KPKNL" },
+  { shortcut: "backup", label: "Backup" },
+  { shortcut: "izin", label: "Izin" },
+  { shortcut: "tk", label: "Tanpa Keterangan" },
+];
+
+/** Bersihkan daftar pilihan dari database/form agar selalu valid & unik. */
+export function normalizeKehadiranOptions(raw: unknown): KehadiranOption[] {
+  const arr = Array.isArray(raw) ? raw : [];
+  const out: KehadiranOption[] = [];
+  const seen = new Set<string>();
+  for (const item of arr) {
+    const o = (item ?? {}) as Partial<KehadiranOption>;
+    const label = String(o.label ?? "").trim();
+    const shortcut = String(o.shortcut ?? "")
+      .trim()
+      .toLowerCase();
+    if (!label || seen.has(label.toLowerCase())) continue;
+    seen.add(label.toLowerCase());
+    out.push({ shortcut, label });
+  }
+  return out.length ? out : defaultKehadiranOptions;
+}
+
+/** Tulis satu pilihan sebagai teks "[kode]Label". */
+export function formatKehadiranOption(o: KehadiranOption) {
+  return `${o.shortcut ? `[${o.shortcut}]` : ""}${o.label}`;
+}
+
+/** Baca teks "[kode]Label" menjadi pilihan kehadiran. */
+export function parseKehadiranOption(text: string): KehadiranOption {
+  const m = /^\s*\[([^\]]*)\]\s*(.*)$/.exec(text);
+  if (m) return { shortcut: m[1]!.trim().toLowerCase(), label: m[2]!.trim() };
+  return { shortcut: "", label: text.trim() };
+}
+
+/** Cari label kehadiran dari kode singkat yang diketik pada kolom QRIS. */
+export function matchKehadiran(value: string, options: KehadiranOption[]): string | null {
+  const v = value.trim().toLowerCase();
+  if (!v) return null;
+  for (const o of options) {
+    if (o.shortcut && o.shortcut.toLowerCase() === v) return o.label;
+    if (o.label.toLowerCase() === v) return o.label;
+  }
+  return null;
+}
+
+
 /** Kolom hari kerja pada tampilan: S (Senin), S (Selasa), R, K, J. */
 export const weekdayLabels = ["S", "S", "R", "K", "J"] as const;
 export const weekdayNames = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat"] as const;

@@ -9,7 +9,7 @@ export async function authorizeCompanion(request: Request) {
   const token = auth.slice(7);
   if (!token) throw new Error("Unauthorized");
 
-  const JWT_SECRET = process.env["SUPABASE_JWT_SECRET"];
+  const JWT_SECRET = process.env["CUSTOM_SUPABASE_JWT_SECRET"] || process.env["SUPABASE_JWT_SECRET"];
   if (!JWT_SECRET) throw new Error("Unauthorized");
 
   let claims: Record<string, unknown>;

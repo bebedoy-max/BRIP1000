@@ -27,11 +27,18 @@ export const paramDefs: ParamDef[] = [
     key: "uker",
     itemLabel: "Nama Unit Kerja",
     noun: "Unit Kerja",
-    fetch: async () =>
-      (await rows("ukers", "id, kode_uker, nama_uker", "kode_uker")).map((r) => ({
+    fetch: async () => {
+      const { sortByUker } = await import("@/lib/uker-order");
+      const list = await rows("ukers", "id, kode_uker, nama_uker, tipe", "kode_uker");
+      return sortByUker(
+        list,
+        (r) => s(r["nama_uker"]),
+        (r) => s(r["tipe"]),
+      ).map((r) => ({
         id: `uker:${s(r["id"])}`,
         label: `${s(r["kode_uker"])} — ${s(r["nama_uker"])}`,
-      })),
+      }));
+    },
   },
   {
     key: "pekerja",

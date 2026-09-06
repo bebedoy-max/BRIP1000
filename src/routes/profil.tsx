@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Building2, Clock, Mail, MapPin, Phone } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { sortByUker } from "@/lib/uker-order";
 import { PublicLayout } from "@/components/PublicLayout";
 
 export const Route = createFileRoute("/profil")({
@@ -38,7 +39,11 @@ function Profil() {
         .from("ukers")
         .select("id, kode_uker, nama_uker, tipe, alamat, pic_it, status_aktif")
         .order("kode_uker");
-      return data ?? [];
+      return sortByUker(
+        data ?? [],
+        (u) => u.nama_uker,
+        (u) => u.tipe,
+      );
     },
   });
 

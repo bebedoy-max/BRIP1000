@@ -103,7 +103,8 @@ export async function listUnitKerja(): Promise<string[]> {
     const names = (data ?? [])
       .map((r: { nama_uker?: string | null }) => (r.nama_uker ?? "").trim())
       .filter(Boolean) as string[];
-    return Array.from(new Set(names));
+    const { sortUkerNames } = await import("@/lib/uker-order");
+    return sortUkerNames(Array.from(new Set(names)));
   } catch {
     return [];
   }

@@ -13,9 +13,9 @@ import iconSilang from "@/assets/doa/silang.png";
 import {
   QRIS_KOSONG,
   isQrisFilled,
-  kehadiranOptions,
+  matchKehadiran,
+  defaultKehadiranOptions,
   recordKey,
-  shortcutFor,
   toIsoDate,
   weekdayLabels,
   weekdayNames,
@@ -25,9 +25,11 @@ import {
   type DoaLogoSettings,
   type DoaPagiRecord,
   type DoaPagiSection,
+  type KehadiranOption,
 } from "@/lib/doa-pagi-ui";
 import {
   getDoaPagiBoard,
+  getDoaPagiKehadiranOptions,
   getDoaPagiLogos,
   listDoaPagiUkers,
   saveDoaPagiRecord,
@@ -105,12 +107,12 @@ function UkerDialog({ onPick }: { onPick: (u: { id: string; nama: string }) => v
  * Penanda harian: kosong (bulat putih) sampai ada absen pada hari itu,
  * lalu ceklis bila QRIS terisi, silang bila hari sudah lewat tanpa QRIS.
  */
-function DayMark({ state }: { state: "ok" | "no" | "empty" }) {
+function DayMark({ state, anim }: { state: "ok" | "no" | "empty"; anim?: boolean }) {
   const src = state === "ok" ? iconCeklis : state === "no" ? iconSilang : iconCircle;
   const alt =
     state === "ok" ? "Hadir" : state === "no" ? "Tidak absen QRIS" : "Belum ada absensi";
   return (
-    <span className="doa-mark" data-state={state}>
+    <span className={`doa-mark${anim ? " doa-mark-drop" : ""}`} data-state={state}>
       <img src={src} alt={alt} />
     </span>
   );
@@ -141,8 +143,14 @@ function SectionScreen({
   registerInput,
   focusNext,
   logos,
+  committed,
+  animKey,
+  options,
 }: {
   section: DoaPagiSection;
+  committed: Draft;
+  animKey: string | null;
+  options: KehadiranOption[];
   logos: DoaLogoSettings;
   dates: string[];
   today: string;
@@ -222,7 +230,8 @@ function SectionScreen({
 
                 <div className="doa-days">
                   {dates.map((d) => {
-                    const rec = draft[recordKey(section.id, nama, d)];
+                    const markKey = recordKey(section.id, nama, d);
+                    const rec = committed[markKey];
                     // Hari ini tetap bulat putih sampai admin absen QRIS;
                     // silang hanya muncul bila QRIS diisi "Kosong" secara eksplisit.
                     const state = isQrisFilled(rec?.qris)
@@ -230,7 +239,7 @@ function SectionScreen({
                       : d < today || rec?.qris === QRIS_KOSONG
                         ? "no"
                         : "empty";
-                    return <DayMark key={d} state={state} />;
+                    return <DayMark key={d} state={state} anim={animKey === markKey} />;
                   })}
 
                 </div>
@@ -257,9 +266,9 @@ function SectionScreen({
                     onChange={(e) => onChangeKehadiran(nama, e.target.value)}
                     className="doa-select"
                   >
-                    {kehadiranOptions.map((o) => (
-                      <option key={o} value={o}>
-                        {o}
+                    {options.map((o) => (
+                      <option key={o.label} value={o.label}>
+                        {o.label}
                       </option>
                     ))}
                   </select>
@@ -332,8 +341,17 @@ function Page() {
   });
   const logos: DoaLogoSettings = logoQuery.data?.logos ?? defaultDoaLogos;
 
+  const optionQuery = useQuery({
+    queryKey: ["doa-pagi", "kehadiran-options"],
+    queryFn: () => getDoaPagiKehadiranOptions(),
+  });
+  const options: KehadiranOption[] = optionQuery.data?.options ?? defaultKehadiranOptions;
+
 
   const [draft, setDraft] = useState<Draft>({});
+  // Penanda harian (ceklis/silang) hanya memakai data yang sudah dikunci Enter.
+  const [committed, setCommitted] = useState<Draft>({});
+  const [animKey, setAnimKey] = useState<string | null>(null);
   const [term, setTerm] = useState("");
   const [askSave, setAskSave] = useState(false);
   const [locked, setLocked] = useState(false);
@@ -374,6 +392,7 @@ function Page() {
         if (!next[k]) next[k] = { qris: "", kehadiran: "Belum Hadir" };
       }
     setDraft(next);
+    setCommitted(next);
   }, [board.data, today]);
 
   const save = useMutation({
@@ -402,6 +421,7 @@ function Page() {
       toast.success(`Absensi tersimpan (${r.saved} baris).`);
       // Bersihkan tampilan lalu kunci absensi untuk hari ini.
       setDraft({});
+      setCommitted({});
       setAskSave(false);
       setLocked(true);
       if (lockKey) window.localStorage.setItem(lockKey, "1");
@@ -443,7 +463,7 @@ function Page() {
     const k = recordKey(sectionId, pekerja, today);
     const cur = draft[k];
     if (!cur) return;
-    const code = shortcutFor(cur.qris);
+    const code = matchKehadiran(cur.qris, options);
     const value = code
       ? { qris: QRIS_KOSONG, kehadiran: code }
       : {
@@ -455,6 +475,10 @@ function Page() {
             : cur.kehadiran,
         };
     updateCell(sectionId, pekerja, value);
+    const k2 = recordKey(sectionId, pekerja, today);
+    setCommitted((c) => ({ ...c, [k2]: value }));
+    setAnimKey(k2);
+    window.setTimeout(() => setAnimKey((a) => (a === k2 ? null : a)), 900);
     save.mutate({ sectionId, pekerja, ...value });
   }
 
@@ -494,7 +518,7 @@ function Page() {
 
       {board.isLoading ? (
         <div className="doa-screen items-center justify-center">
-          <p className="flex items-center gap-2 text-sm text-white/80">
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" /> Memuat bagian {uker.nama}…
           </p>
         </div>
@@ -502,6 +526,9 @@ function Page() {
         sections.map((s) => (
           <SectionScreen
             logos={logos}
+            committed={committed}
+            animKey={animKey}
+            options={options}
             key={s.id}
             section={s}
             dates={dates}
@@ -537,7 +564,7 @@ function Page() {
         ))
       ) : (
         <div className="doa-screen items-center justify-center">
-          <p className="text-center text-sm text-white/80">
+          <p className="text-center text-sm text-muted-foreground">
             Belum ada bagian untuk {uker.nama}. Tambahkan di Setting → Absensi Doa Pagi.
           </p>
         </div>

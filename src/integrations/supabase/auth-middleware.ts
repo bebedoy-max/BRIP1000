@@ -72,9 +72,9 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server
     // Self-hosted Supabase with symmetric (HS256) JWT: verify the token
     // locally with SUPABASE_JWT_SECRET — no network call back to the Auth
     // server (avoids hairpin-NAT hangs). Error behavior matches getClaims().
-    const JWT_SECRET = process.env['SUPABASE_JWT_SECRET'];
+    const JWT_SECRET = process.env['CUSTOM_SUPABASE_JWT_SECRET'] || process.env['SUPABASE_JWT_SECRET'];
     if (!JWT_SECRET) {
-      const message = 'Missing Supabase environment variable(s): SUPABASE_JWT_SECRET. Add it to verify tokens locally.';
+      const message = 'Missing Supabase environment variable(s): CUSTOM_SUPABASE_JWT_SECRET. Add it to verify tokens locally.';
       console.error(`[Supabase] ${message}`);
       throw new Error(message);
     }

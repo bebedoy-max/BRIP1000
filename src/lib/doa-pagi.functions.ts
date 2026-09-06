@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { DoaLogoSettings, DoaPagiSection } from "@/lib/doa-pagi-ui";
+import type { DoaLogoSettings, DoaPagiSection, KehadiranOption } from "@/lib/doa-pagi-ui";
 
 /** Daftar unit kerja untuk popup pilihan. */
 export const listDoaPagiUkers = createServerFn({ method: "GET" })
@@ -132,6 +132,14 @@ export const saveDoaPagiRecords = createServerFn({ method: "POST" })
     return { saved };
   });
 
+/** Reset seluruh data absensi & QRIS (khusus Super Admin). */
+export const resetDoaPagiData = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { resetAbsensiQrisData } = await import("@/lib/doa-pagi.server");
+    return resetAbsensiQrisData(context.userId);
+  });
+
 /** Laporan riwayat absensi per unit kerja pada rentang tanggal. */
 export const getDoaPagiReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -139,4 +147,23 @@ export const getDoaPagiReport = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { listRecordsRange } = await import("@/lib/doa-pagi.server");
     return listRecordsRange(data.ukerId, data.from, data.to);
+  });
+
+/** Pilihan kolom kehadiran (dibaca tampilan absensi). */
+export const getDoaPagiKehadiranOptions = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { getKehadiranOptions } = await import("@/lib/doa-pagi.server");
+    return { options: await getKehadiranOptions() };
+  });
+
+/** Simpan pilihan kolom kehadiran (khusus admin). */
+export const saveDoaPagiKehadiranOptions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { options: KehadiranOption[] }) => data)
+  .handler(async ({ data, context }) => {
+    const { assertAdmin, saveKehadiranOptions } = await import("@/lib/doa-pagi.server");
+    await assertAdmin(context.userId);
+    await saveKehadiranOptions(data.options);
+    return { ok: true };
   });
