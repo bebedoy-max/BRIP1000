@@ -33,7 +33,7 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 
 export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server(
   async ({ next }) => {
-    
+
     const SUPABASE_URL = process.env['CUSTOM_SUPABASE_URL'] || FALLBACK_SUPABASE_URL;
     const SUPABASE_PUBLISHABLE_KEY = process.env['CUSTOM_SUPABASE_PUBLISHABLE_KEY'] || FALLBACK_SUPABASE_PUBLISHABLE_KEY;
 
@@ -46,7 +46,7 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server
       console.error(`[Supabase] ${message}`);
       throw new Error(message);
     }
-    
+
     const request = getRequest();
 
     if (!request?.headers) {
@@ -72,6 +72,31 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server
       throw new Error('Unauthorized: Invalid token');
     }
 
+    // Self-hosted Supabase with symmetric (HS256) JWT: verify the token
+    // locally with SUPABASE_JWT_SECRET — no network call back to the Auth
+    // server (avoids hairpin-NAT hangs). Error behavior matches getClaims().
+    const JWT_SECRET = process.env['SUPABASE_JWT_SECRET'];
+    if (!JWT_SECRET) {
+      const message = 'Missing Supabase environment variable(s): SUPABASE_JWT_SECRET. Add it to verify tokens locally.';
+      console.error(`[Supabase] ${message}`);
+      throw new Error(message);
+    }
+
+    let claims: Record<string, unknown>;
+    try {
+      const { jwtVerify } = await import('jose');
+      const { payload } = await jwtVerify(token, new TextEncoder().encode(JWT_SECRET), {
+        algorithms: ['HS256'],
+      });
+      claims = payload;
+    } catch {
+      throw new Error('Unauthorized: Invalid token');
+    }
+
+    if (!claims['sub']) {
+      throw new Error('Unauthorized: No user ID found in token');
+    }
+
     const supabase = createClient<Database>(
       SUPABASE_URL!,
       SUPABASE_PUBLISHABLE_KEY!,
@@ -90,20 +115,11 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server
       }
     );
 
-    const { data, error } = await supabase.auth.getClaims(token);
-    if (error || !data?.claims) {
-      throw new Error('Unauthorized: Invalid token');
-    }
-
-    if (!data.claims.sub) {
-      throw new Error('Unauthorized: No user ID found in token');
-    }
-
     return next({
       context: {
         supabase,
-        userId: data.claims.sub,
-        claims: data.claims,
+        userId: claims['sub'] as string,
+        claims,
       },
     });
   },
