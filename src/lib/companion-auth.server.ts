@@ -1,9 +1,7 @@
 // Verifikasi token companion app (server-only).
 import { createClient } from "@supabase/supabase-js";
-import {
-  CUSTOM_SUPABASE_URL as FALLBACK_URL,
-  CUSTOM_SUPABASE_PUBLISHABLE_KEY as FALLBACK_KEY,
-} from "@/supabase-config";
+import { CUSTOM_SUPABASE_PUBLISHABLE_KEY as FALLBACK_KEY } from "@/supabase-config";
+import { getSupabaseServerUrl } from "@/lib/supabase-server-url.server";
 
 export async function authorizeCompanion(request: Request) {
   const auth = request.headers.get("authorization") ?? "";
@@ -30,7 +28,7 @@ export async function authorizeCompanion(request: Request) {
   if (!claims["sub"]) throw new Error("Unauthorized");
   const userId = claims["sub"] as string;
 
-  const url = process.env["CUSTOM_SUPABASE_URL"] || FALLBACK_URL;
+  const url = getSupabaseServerUrl();
   const key = process.env["CUSTOM_SUPABASE_PUBLISHABLE_KEY"] || FALLBACK_KEY;
   const supabase = createClient(url, key, {
     global: { headers: { Authorization: `Bearer ${token}` } },

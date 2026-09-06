@@ -1,9 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
-import {
-  CUSTOM_SUPABASE_URL as FALLBACK_URL,
-  CUSTOM_SUPABASE_PUBLISHABLE_KEY as FALLBACK_KEY,
-} from "@/supabase-config";
+import { CUSTOM_SUPABASE_PUBLISHABLE_KEY as FALLBACK_KEY } from "@/supabase-config";
+import { getSupabaseServerUrl } from "@/lib/supabase-server-url.server";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -28,7 +26,7 @@ export const Route = createFileRoute("/api/public/companion/upload")({
         if (!auth.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
         const token = auth.slice(7);
 
-        const url = process.env["CUSTOM_SUPABASE_URL"] || FALLBACK_URL;
+        const url = getSupabaseServerUrl();
         const key = process.env["CUSTOM_SUPABASE_PUBLISHABLE_KEY"] || FALLBACK_KEY;
         const supabase = createClient(url, key, {
           global: { headers: { Authorization: `Bearer ${token}` } },
