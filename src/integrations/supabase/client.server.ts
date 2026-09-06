@@ -32,6 +32,7 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 
 function createSupabaseAdminClient() {
   const SUPABASE_URL =
+    process.env['SUPABASE_INTERNAL_URL'] ||
     process.env['VITE_SUPABASE_URL'] ||
     process.env['SUPABASE_URL'] ||
     process.env['CUSTOM_SUPABASE_URL'] ||
