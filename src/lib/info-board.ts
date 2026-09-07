@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { slideImageSrc } from "@/lib/carousel";
+import { extractDriveId, slideImageSrc } from "@/lib/carousel";
 
 const db = supabase as unknown as SupabaseClient;
 
@@ -73,4 +73,18 @@ export function embedVideoSrc(url: string) {
 /** Sumber media slide (URL langsung atau ID file Google Drive). */
 export function infoMediaSrc(value: string, size = 1200) {
   return slideImageSrc(value, size);
+}
+
+/** ID file Google Drive bila media berasal dari unggahan Drive. */
+export function infoDriveId(value: string): string | null {
+  const raw = value.trim();
+  if (!raw) return null;
+  const id = extractDriveId(raw);
+  if (id) return id;
+  return /^(https?:|data:|blob:)/i.test(raw) ? null : raw;
+}
+
+/** Pemutar video Google Drive (dipasang lewat iframe preview). */
+export function driveVideoEmbed(id: string) {
+  return `https://drive.google.com/file/d/${id}/preview`;
 }

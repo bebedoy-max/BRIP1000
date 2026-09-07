@@ -3,7 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, MonitorPlay } from "lucide-react";
 
 import {
+  driveVideoEmbed,
   embedVideoSrc,
+  infoDriveId,
   infoMediaSrc,
   isEmbedVideo,
   loadInfoSlides,
@@ -39,7 +41,12 @@ export function InfoBoard() {
   const prev = () => setIdx((i) => (slides.length ? (i - 1 + slides.length) % slides.length : 0));
 
   // Teks & gambar berganti sesuai durasi; video (file) berganti saat selesai.
-  const isFileVideo = current?.jenis === "video" && !!current.media_url && !isEmbedVideo(current.media_url);
+  const videoDriveId = current?.jenis === "video" && current.media_url ? infoDriveId(current.media_url) : null;
+  const isFileVideo =
+    current?.jenis === "video" &&
+    !!current.media_url &&
+    !isEmbedVideo(current.media_url) &&
+    !videoDriveId;
   useEffect(() => {
     if (!current || slides.length < 2 || isFileVideo) return;
     const ms = Math.max(2, Number(current.durasi) || 8) * 1000;
@@ -97,10 +104,10 @@ export function InfoBoard() {
         ) : null}
 
         {current.jenis === "video" && current.media_url ? (
-          isEmbedVideo(current.media_url) ? (
+          isEmbedVideo(current.media_url) || videoDriveId ? (
             <iframe
               key={current.media_url}
-              src={embedVideoSrc(current.media_url)}
+              src={videoDriveId ? driveVideoEmbed(videoDriveId) : embedVideoSrc(current.media_url)}
               title={current.judul}
               allow="autoplay; encrypted-media; picture-in-picture"
               allowFullScreen

@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, Upload } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useServerFn } from "@tanstack/react-start";
+import { finalizeInfoMedia, infoMediaUploadUrl } from "@/lib/info-board.functions";
 import {
+  infoDriveId,
   infoKinds,
+  infoMediaSrc,
   infoTransitions,
   loadInfoSlidesAll,
   type InfoKind,
@@ -51,6 +55,59 @@ export function InfoBoardManager({ canWrite }: { canWrite: boolean }) {
   const [form, setForm] = useState<Form>(emptyForm);
   const [editId, setEditId] = useState<string | null>(null);
 
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [progress, setProgress] = useState<number | null>(null);
+  const getUploadUrl = useServerFn(infoMediaUploadUrl);
+  const finalize = useServerFn(finalizeInfoMedia);
+
+  // Unggah gambar/video langsung ke Google Drive (folder SUPER IT DATA →
+  // "Media Papan Informasi"), lalu simpan ID filenya sebagai media slide.
+  const pickFile = async (file: File) => {
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+    if (!isImage && !isVideo) {
+      toast.error("File harus berupa gambar atau video.");
+      return;
+    }
+    setProgress(0);
+    try {
+      const { uploadUrl } = await getUploadUrl({
+        data: { fileName: file.name, mimeType: file.type },
+      });
+      const uploaded = await new Promise<{ id: string }>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", uploadUrl);
+        xhr.setRequestHeader("Content-Type", file.type);
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) setProgress(Math.round((ev.loaded / ev.total) * 100));
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(JSON.parse(xhr.responseText) as { id: string });
+            } catch {
+              reject(new Error("Respons Google tidak dikenali."));
+            }
+          } else reject(new Error(`Gagal unggah [${xhr.status}]`));
+        };
+        xhr.onerror = () => reject(new Error("Koneksi terputus saat mengunggah."));
+        xhr.send(file);
+      });
+      await finalize({ data: { fileId: uploaded.id } });
+      setForm((f) => ({
+        ...f,
+        jenis: isVideo ? "video" : "image",
+        media_url: uploaded.id,
+      }));
+      toast.success("File tersimpan di Google Drive");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setProgress(null);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
   const list = useQuery({ queryKey: ["info-board-all"], queryFn: loadInfoSlidesAll });
   const rows = list.data ?? [];
 
@@ -68,7 +125,7 @@ export function InfoBoardManager({ canWrite }: { canWrite: boolean }) {
     mutationFn: async () => {
       if (!form.judul.trim()) throw new Error("Judul wajib diisi");
       if (form.jenis !== "text" && !form.media_url.trim())
-        throw new Error("URL gambar/video wajib diisi");
+        throw new Error("Foto/video wajib diunggah");
       const payload = {
         judul: form.judul.trim(),
         jenis: form.jenis,
@@ -181,20 +238,60 @@ export function InfoBoardManager({ canWrite }: { canWrite: boolean }) {
 
           {form.jenis !== "text" ? (
             <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor="media">
-                {form.jenis === "image" ? "URL Gambar / ID Google Drive" : "URL Video / YouTube"}
-              </Label>
-              <Input
-                id="media"
-                value={form.media_url}
-                disabled={!canWrite}
-                onChange={(e) => setForm((f) => ({ ...f, media_url: e.target.value }))}
-                placeholder={
-                  form.jenis === "image"
-                    ? "https://… atau 1AbCdEf_driveFileId"
-                    : "https://…/video.mp4 atau https://youtu.be/…"
-                }
+              <Label>{form.jenis === "image" ? "Gambar" : "Video"}</Label>
+              <input
+                ref={fileRef}
+                type="file"
+                accept={form.jenis === "image" ? "image/*" : "video/*"}
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void pickFile(f);
+                }}
               />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={!canWrite || progress !== null}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  <Upload className="mr-2 size-4" />
+                  {progress !== null
+                    ? `Mengunggah… ${progress}%`
+                    : form.jenis === "image"
+                      ? "Upload Foto"
+                      : "Upload Video"}
+                </Button>
+                {form.media_url ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={!canWrite || progress !== null}
+                    onClick={() => setForm((f) => ({ ...f, media_url: "" }))}
+                  >
+                    Hapus media
+                  </Button>
+                ) : null}
+              </div>
+              {form.media_url ? (
+                form.jenis === "image" ? (
+                  <img
+                    src={infoMediaSrc(form.media_url, 600)}
+                    alt="Pratinjau"
+                    className="max-h-40 w-full rounded-xl object-cover"
+                  />
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Video siap: {infoDriveId(form.media_url) ?? form.media_url}
+                  </p>
+                )
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  File tersimpan otomatis di Google Drive folder SUPER IT DATA → Media Papan
+                  Informasi.
+                </p>
+              )}
             </div>
           ) : null}
 
