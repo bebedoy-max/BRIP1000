@@ -49,6 +49,88 @@ const emptyForm: Form = {
 const selectClass =
   "h-10 w-full rounded-xl border border-input bg-popover px-3 text-sm";
 
+const CHUNK_SIZE = 8 * 1024 * 1024; // 8 MB (kelipatan 256 KB sesuai aturan Google)
+const MAX_RETRY = 4;
+
+function delay(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Tanya Google sudah sampai byte berapa upload diterima (untuk lanjut ulang). */
+async function queryUploadedBytes(uploadUrl: string, total: number): Promise<number> {
+  const res = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Range": `bytes */${total}` },
+  });
+  if (res.status === 308) {
+    const range = res.headers.get("range"); // contoh: bytes=0-12345
+    const m = range?.match(/bytes=0-(\d+)/);
+    return m ? Number(m[1]) + 1 : 0;
+  }
+  return 0;
+}
+
+/**
+ * Unggah resumable per potongan (chunk) langsung ke Google Drive dengan
+ * percobaan ulang otomatis — tahan terhadap koneksi yang putus di tengah
+ * untuk file video besar.
+ */
+async function resumableUpload(
+  uploadUrl: string,
+  file: File,
+  onProgress: (pct: number) => void,
+): Promise<{ id: string }> {
+  const total = file.size;
+  let offset = 0;
+  let attempt = 0;
+
+  while (offset < total) {
+    const end = Math.min(offset + CHUNK_SIZE, total);
+    const chunk = file.slice(offset, end);
+    const last = end === total;
+    try {
+      const res = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Range": `bytes ${offset}-${end - 1}/${total}` },
+        body: chunk,
+      });
+      if (res.status === 308) {
+        // Potongan diterima, lanjut potongan berikutnya.
+        offset = end;
+        attempt = 0;
+        onProgress(Math.round((offset / total) * 100));
+        continue;
+      }
+      if (res.ok) {
+        if (!last) {
+          // Seharusnya tidak terjadi, tapi anggap potongan diterima.
+          offset = end;
+          attempt = 0;
+          onProgress(Math.round((offset / total) * 100));
+          continue;
+        }
+        onProgress(100);
+        return (await res.json()) as { id: string };
+      }
+      if (res.status >= 500 || res.status === 429) throw new Error(`server ${res.status}`);
+      const body = await res.text();
+      throw new Error(`Gagal unggah [${res.status}]: ${body.slice(0, 200)}`);
+    } catch (e) {
+      // Kesalahan validasi (4xx selain 429) jangan diulang.
+      if (e instanceof Error && e.message.startsWith("Gagal unggah")) throw e;
+      attempt += 1;
+      if (attempt > MAX_RETRY) {
+        throw new Error("Koneksi terputus saat mengunggah. Coba lagi dengan koneksi stabil.");
+      }
+      await delay(1000 * attempt);
+      // Sinkronkan posisi byte yang sudah diterima Google sebelum lanjut.
+      offset = await queryUploadedBytes(uploadUrl, total);
+      onProgress(Math.round((offset / total) * 100));
+    }
+  }
+  throw new Error("Unggahan selesai tanpa respons dari Google.");
+}
+
 /** Pengelolaan konten papan informasi digital pada dashboard. */
 export function InfoBoardManager({ canWrite }: { canWrite: boolean }) {
   const qc = useQueryClient();
@@ -74,25 +156,7 @@ export function InfoBoardManager({ canWrite }: { canWrite: boolean }) {
       const { uploadUrl } = await getUploadUrl({
         data: { fileName: file.name, mimeType: file.type },
       });
-      const uploaded = await new Promise<{ id: string }>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("PUT", uploadUrl);
-        xhr.setRequestHeader("Content-Type", file.type);
-        xhr.upload.onprogress = (ev) => {
-          if (ev.lengthComputable) setProgress(Math.round((ev.loaded / ev.total) * 100));
-        };
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              resolve(JSON.parse(xhr.responseText) as { id: string });
-            } catch {
-              reject(new Error("Respons Google tidak dikenali."));
-            }
-          } else reject(new Error(`Gagal unggah [${xhr.status}]`));
-        };
-        xhr.onerror = () => reject(new Error("Koneksi terputus saat mengunggah."));
-        xhr.send(file);
-      });
+      const uploaded = await resumableUpload(uploadUrl, file, setProgress);
       await finalize({ data: { fileId: uploaded.id } });
       setForm((f) => ({
         ...f,
