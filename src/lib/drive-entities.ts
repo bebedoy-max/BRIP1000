@@ -9,7 +9,8 @@ export type PhotoEntity =
   | "event"
   | "absensi"
   | "project"
-  | "buku-harian";
+  | "buku-harian"
+  | "papan-informasi";
 
 export const photoEntities: Record<PhotoEntity, { label: string; folder: string }> = {
   uker: { label: "Unit Kerja", folder: "Foto Unit Kerja" },
@@ -22,6 +23,7 @@ export const photoEntities: Record<PhotoEntity, { label: string; folder: string 
   absensi: { label: "Absensi Event", folder: "Foto Absensi" },
   project: { label: "Project IT", folder: "Foto Project IT" },
   "buku-harian": { label: "Buku Harian IT", folder: "Foto Buku Harian IT" },
+  "papan-informasi": { label: "Papan Informasi", folder: "Media Papan Informasi" },
 };
 
 

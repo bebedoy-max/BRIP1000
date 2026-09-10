@@ -69,26 +69,10 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server
       throw new Error('Unauthorized: Invalid token');
     }
 
-    // Self-hosted Supabase with symmetric (HS256) JWT: verify the token
-    // locally with SUPABASE_JWT_SECRET — no network call back to the Auth
-    // server (avoids hairpin-NAT hangs). Error behavior matches getClaims().
-    const JWT_SECRET = process.env['CUSTOM_SUPABASE_JWT_SECRET'] || process.env['SUPABASE_JWT_SECRET'];
-    if (!JWT_SECRET) {
-      const message = 'Missing Supabase environment variable(s): CUSTOM_SUPABASE_JWT_SECRET. Add it to verify tokens locally.';
-      console.error(`[Supabase] ${message}`);
-      throw new Error(message);
-    }
-
-    let claims: Record<string, unknown>;
-    try {
-      const { jwtVerify } = await import('jose');
-      const { payload } = await jwtVerify(token, new TextEncoder().encode(JWT_SECRET), {
-        algorithms: ['HS256'],
-      });
-      claims = payload;
-    } catch {
-      throw new Error('Unauthorized: Invalid token');
-    }
+    // Verify locally with the JWT secret when available; otherwise fall back
+    // to the Supabase Auth API so the app works without that secret.
+    const { verifySupabaseToken } = await import('@/lib/verify-token.server');
+    const claims = await verifySupabaseToken(token);
 
     if (!claims['sub']) {
       throw new Error('Unauthorized: No user ID found in token');

@@ -9,18 +9,10 @@ export async function authorizeCompanion(request: Request) {
   const token = auth.slice(7);
   if (!token) throw new Error("Unauthorized");
 
-  const JWT_SECRET = process.env["CUSTOM_SUPABASE_JWT_SECRET"] || process.env["SUPABASE_JWT_SECRET"];
-  if (!JWT_SECRET) throw new Error("Unauthorized");
-
+  const { verifySupabaseToken } = await import("@/lib/verify-token.server");
   let claims: Record<string, unknown>;
   try {
-    const { jwtVerify } = await import("jose");
-    const { payload } = await jwtVerify(
-      token,
-      new TextEncoder().encode(JWT_SECRET),
-      { algorithms: ["HS256"] },
-    );
-    claims = payload;
+    claims = await verifySupabaseToken(token);
   } catch {
     throw new Error("Unauthorized");
   }

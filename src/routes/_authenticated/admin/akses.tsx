@@ -2,10 +2,21 @@ import { Fragment } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { AdminPage } from "@/components/AdminLayout";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useRoles } from "@/lib/roles";
+import {
+  DEFAULT_FONT,
+  DEFAULT_THEME,
+  fontOptions,
+  themePresets,
+  useAppearance,
+  useSaveAppearance,
+} from "@/lib/appearance";
 import {
   accessLevels,
   menuItems,
@@ -19,24 +30,154 @@ import {
 
 const db = supabase as unknown as SupabaseClient;
 
+
 export const Route = createFileRoute("/_authenticated/admin/akses")({
   head: () => ({
     meta: [
-      { title: "Akses Halaman — Panel BRI BO Pringsewu" },
-      { name: "description", content: "Pengaturan menu yang boleh diakses tiap level akses." },
-      { property: "og:title", content: "Akses Halaman — Panel BRI BO Pringsewu" },
-      { property: "og:description", content: "Pengaturan hak akses menu per level akses." },
+      { title: "Pengaturan Halaman — Panel BRI BO Pringsewu" },
+      { name: "description", content: "Atur hak akses menu dan tampilan (tema warna & font) web app." },
+      { property: "og:title", content: "Pengaturan Halaman — Panel BRI BO Pringsewu" },
+      { property: "og:description", content: "Pengaturan akses menu dan tampilan aplikasi." },
     ],
   }),
   component: () => (
     <AdminPage menuKey="akses">
-      <Page />
+      <PengaturanHalaman />
     </AdminPage>
   ),
 });
 
+function PengaturanHalaman() {
+  return (
+    <>
+      <h1 className="text-2xl font-bold">
+        <span className="gradient-text">Pengaturan Halaman</span>
+      </h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Kelola hak akses menu dan tampilan web app secara menyeluruh.
+      </p>
+
+      <Tabs defaultValue="akses" className="mt-6">
+        <TabsList>
+          <TabsTrigger value="akses">Akses Menu</TabsTrigger>
+          <TabsTrigger value="tampilan">Tampilan</TabsTrigger>
+        </TabsList>
+        <TabsContent value="akses" className="mt-4">
+          <Page />
+        </TabsContent>
+        <TabsContent value="tampilan" className="mt-4">
+          <TampilanTab />
+        </TabsContent>
+      </Tabs>
+    </>
+  );
+}
+
+function TampilanTab() {
+  const { isSuperadmin } = useRoles();
+  const appearance = useAppearance();
+  const save = useSaveAppearance();
+  const theme = appearance.data?.theme_key ?? DEFAULT_THEME;
+  const font = appearance.data?.font_key ?? DEFAULT_FONT;
+
+  function pilih(v: { theme_key?: string; font_key?: string }) {
+    if (!isSuperadmin) return;
+    save.mutate(v, {
+      onSuccess: () => toast.success("Tampilan diperbarui"),
+      onError: (e: Error) => toast.error(e.message),
+    });
+  }
+
+  return (
+    <div className="space-y-8">
+      {!isSuperadmin ? (
+        <p className="text-sm text-muted-foreground">
+          Hanya Super Admin yang dapat mengubah tampilan aplikasi.
+        </p>
+      ) : null}
+
+      <section>
+        <h2 className="text-lg font-semibold">Tema Warna</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Tema mengubah warna seluruh halaman. Menu atau halaman baru yang ditambahkan nanti
+          otomatis mengikuti tema yang dipilih di sini.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {themePresets.map((t) => {
+            const active = t.key === theme;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                disabled={!isSuperadmin || save.isPending}
+                onClick={() => pilih({ theme_key: t.key })}
+                className={`glass-card p-4 text-left transition-transform hover:scale-[1.01] disabled:opacity-60 ${
+                  active ? "ring-2 ring-primary" : ""
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-semibold">{t.label}</span>
+                  {active ? <Check className="size-4 text-primary" /> : null}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">{t.description}</p>
+                <div className="mt-3 flex gap-2">
+                  {t.swatch.map((c) => (
+                    <span
+                      key={c}
+                      className="size-7 rounded-full border border-border/60"
+                      style={{ background: c }}
+                    />
+                  ))}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold">Font Aplikasi</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Semua font dihosting sendiri sehingga tetap tampil di hosting mana pun.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {fontOptions.map((f) => {
+            const active = f.key === font;
+            return (
+              <button
+                key={f.key}
+                type="button"
+                disabled={!isSuperadmin || save.isPending}
+                onClick={() => pilih({ font_key: f.key })}
+                className={`glass-card p-4 text-left transition-transform hover:scale-[1.01] disabled:opacity-60 ${
+                  active ? "ring-2 ring-primary" : ""
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs tracking-wide text-muted-foreground uppercase">
+                    {f.label}
+                    {f.note ? ` · ${f.note}` : ""}
+                  </span>
+                  {active ? <Check className="size-4 text-primary" /> : null}
+                </div>
+                <p
+                  className="mt-2 truncate text-2xl"
+                  style={{ fontFamily: `"${f.label}", ui-sans-serif, system-ui, sans-serif` }}
+                >
+                  BRI BO Pringsewu 123
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function Page() {
   const qc = useQueryClient();
+
   const rules = usePageAccess();
 
   const rows: PageAccessRow[] = rules.data ?? [];
@@ -105,10 +246,11 @@ function Page() {
 
   return (
     <>
-      <h1 className="text-2xl font-bold">
-        <span className="gradient-text">Akses Halaman</span>
-      </h1>
+      <h2 className="text-lg font-semibold">
+        <span className="gradient-text">Akses Menu</span>
+      </h2>
       <p className="mt-1 text-sm text-muted-foreground">
+
         Atur hak <span className="text-foreground">View</span> (lihat) dan{" "}
         <span className="text-foreground">Edit</span> (tambah/ubah/hapus) tiap level akses. Super
         Admin selalu memiliki akses penuh. Kolom{" "}

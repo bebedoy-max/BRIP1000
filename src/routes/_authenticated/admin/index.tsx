@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, Building2, CalendarDays, CreditCard, Users } from "lucide-react";
+import { Banknote, Building2, CalendarDays, CreditCard, QrCode, Users } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { AdminLayout } from "@/components/AdminLayout";
@@ -43,6 +43,7 @@ function Page() {
       employees: await count("employees"),
       atm: (await count("atm_machines")) + (await count("crm_machines")),
       edc: await count("edc_machines"),
+      qris: await count("qris_merchants"),
       projects: await count("projects"),
       events: await count("events"),
     }),
@@ -52,6 +53,7 @@ function Page() {
     { label: "Unit Kerja", value: stats.data?.ukers ?? "—", icon: Building2, hint: "Uker aktif terdaftar", detailKey: "uker" },
     { label: "ATM/CRM", value: stats.data?.atm ?? "—", icon: Banknote, hint: "Termonitor", detailKey: "atm" },
     { label: "Mesin EDC", value: stats.data?.edc ?? "—", icon: CreditCard, hint: "Merchant terpasang", detailKey: "edc" },
+    { label: "Qris", value: stats.data?.qris ?? "—", icon: QrCode, hint: "Merchant QRIS", detailKey: "qris" },
     { label: "Pegawai", value: stats.data?.employees ?? "—", icon: Users, hint: "Seluruh unit kerja", detailKey: "pegawai" },
     { label: "Project IT", value: stats.data?.projects ?? "—", icon: CalendarDays, hint: "Project berjalan", detailKey: "project" },
     { label: "Event", value: stats.data?.events ?? "—", icon: CalendarDays, hint: "Acara & kegiatan", detailKey: "event" },

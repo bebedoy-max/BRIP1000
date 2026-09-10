@@ -1,6 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { DoaLogoSettings, DoaPagiSection, KehadiranOption } from "@/lib/doa-pagi-ui";
+import type {
+  DoaLogoSettings,
+  DoaPagiSection,
+  DoaRotationSettings,
+  KehadiranOption,
+} from "@/lib/doa-pagi-ui";
 
 /** Daftar unit kerja untuk popup pilihan. */
 export const listDoaPagiUkers = createServerFn({ method: "GET" })
@@ -165,5 +170,24 @@ export const saveDoaPagiKehadiranOptions = createServerFn({ method: "POST" })
     const { assertAdmin, saveKehadiranOptions } = await import("@/lib/doa-pagi.server");
     await assertAdmin(context.userId);
     await saveKehadiranOptions(data.options);
+    return { ok: true };
+  });
+
+/** Pengaturan rotasi bagian per hari (dibaca tampilan absensi). */
+export const getDoaPagiRotation = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { getRotationSettings } = await import("@/lib/doa-pagi.server");
+    return { rotation: await getRotationSettings() };
+  });
+
+/** Simpan pengaturan rotasi bagian per hari (khusus admin). */
+export const saveDoaPagiRotation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { rotation: DoaRotationSettings }) => data)
+  .handler(async ({ data, context }) => {
+    const { assertAdmin, saveRotationSettings } = await import("@/lib/doa-pagi.server");
+    await assertAdmin(context.userId);
+    await saveRotationSettings(data.rotation);
     return { ok: true };
   });

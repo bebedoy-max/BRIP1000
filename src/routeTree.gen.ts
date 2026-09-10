@@ -55,6 +55,7 @@ import { Route as AuthenticatedAdminToolsRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminTutorialRouteImport } from './routes/_authenticated/admin/tutorial'
 import { Route as AuthenticatedAdminUkerRouteImport } from './routes/_authenticated/admin/uker'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
+import { Route as ApiInfoMediaUploadRouteImport } from './routes/api/info-media/upload'
 import { Route as ApiZoomCallbackRouteImport } from './routes/api/zoom/callback'
 import { Route as AuthenticatedAdminEventIndexRouteImport } from './routes/_authenticated/admin/event/index'
 import { Route as AuthenticatedAdminEventIdRouteImport } from './routes/_authenticated/admin/event/$id'
@@ -329,6 +330,11 @@ const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiInfoMediaUploadRoute = ApiInfoMediaUploadRouteImport.update({
+  id: '/api/info-media/upload',
+  path: '/api/info-media/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiZoomCallbackRoute = ApiZoomCallbackRouteImport.update({
   id: '/api/zoom/callback',
   path: '/api/zoom/callback',
@@ -541,6 +547,7 @@ export interface FileRoutesByFullPath {
   '/admin/tutorial': typeof AuthenticatedAdminTutorialRoute
   '/admin/uker': typeof AuthenticatedAdminUkerRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/api/info-media/upload': typeof ApiInfoMediaUploadRoute
   '/api/zoom/callback': typeof ApiZoomCallbackRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/event/$id': typeof AuthenticatedAdminEventIdRoute
@@ -615,6 +622,7 @@ export interface FileRoutesByTo {
   '/admin/tutorial': typeof AuthenticatedAdminTutorialRoute
   '/admin/uker': typeof AuthenticatedAdminUkerRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/api/info-media/upload': typeof ApiInfoMediaUploadRoute
   '/api/zoom/callback': typeof ApiZoomCallbackRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/event/$id': typeof AuthenticatedAdminEventIdRoute
@@ -687,6 +695,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/tutorial': typeof AuthenticatedAdminTutorialRoute
   '/_authenticated/admin/uker': typeof AuthenticatedAdminUkerRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/api/info-media/upload': typeof ApiInfoMediaUploadRoute
   '/api/zoom/callback': typeof ApiZoomCallbackRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/event/$id': typeof AuthenticatedAdminEventIdRoute
@@ -764,6 +773,7 @@ export interface FileRouteTypes {
     | '/admin/tutorial'
     | '/admin/uker'
     | '/admin/users'
+    | '/api/info-media/upload'
     | '/api/zoom/callback'
     | '/admin/'
     | '/admin/event/$id'
@@ -838,6 +848,7 @@ export interface FileRouteTypes {
     | '/admin/tutorial'
     | '/admin/uker'
     | '/admin/users'
+    | '/api/info-media/upload'
     | '/api/zoom/callback'
     | '/admin'
     | '/admin/event/$id'
@@ -909,6 +920,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/tutorial'
     | '/_authenticated/admin/uker'
     | '/_authenticated/admin/users'
+    | '/api/info-media/upload'
     | '/api/zoom/callback'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/event/$id'
@@ -956,6 +968,7 @@ export interface RootRouteChildren {
   ProjectIdRoute: typeof ProjectIdRoute
   VoteShowSlugRoute: typeof VoteShowSlugRoute
   VoteSlugRoute: typeof VoteSlugRoute
+  ApiInfoMediaUploadRoute: typeof ApiInfoMediaUploadRoute
   ApiZoomCallbackRoute: typeof ApiZoomCallbackRoute
   ApiPublicCompanionDeleteEventRoute: typeof ApiPublicCompanionDeleteEventRoute
   ApiPublicCompanionDriveStatusRoute: typeof ApiPublicCompanionDriveStatusRoute
@@ -1290,6 +1303,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/users'
       preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/info-media/upload': {
+      id: '/api/info-media/upload'
+      path: '/api/info-media/upload'
+      fullPath: '/api/info-media/upload'
+      preLoaderRoute: typeof ApiInfoMediaUploadRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/zoom/callback': {
       id: '/api/zoom/callback'
@@ -1701,6 +1721,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectIdRoute: ProjectIdRoute,
   VoteShowSlugRoute: VoteShowSlugRoute,
   VoteSlugRoute: VoteSlugRoute,
+  ApiInfoMediaUploadRoute: ApiInfoMediaUploadRoute,
   ApiZoomCallbackRoute: ApiZoomCallbackRoute,
   ApiPublicCompanionDeleteEventRoute: ApiPublicCompanionDeleteEventRoute,
   ApiPublicCompanionDriveStatusRoute: ApiPublicCompanionDriveStatusRoute,

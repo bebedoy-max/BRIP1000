@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { slideImageSrc } from "@/lib/carousel";
+import { extractDriveId, slideImageSrc } from "@/lib/carousel";
 
 const db = supabase as unknown as SupabaseClient;
 
@@ -32,6 +32,8 @@ export type InfoSlide = {
   media_url: string | null;
   durasi: number;
   transisi: InfoTransition;
+  /** Durasi efek transisi (milidetik). */
+  transisi_ms: number;
   aktif: boolean;
   urutan: number;
 };
@@ -41,11 +43,14 @@ export async function loadInfoSlidesAll(): Promise<InfoSlide[]> {
   try {
     const { data, error } = await db
       .from("info_board_slides")
-      .select("id,judul,jenis,isi,media_url,durasi,transisi,aktif,urutan")
+      .select("*")
       .order("urutan", { ascending: true })
       .order("created_at", { ascending: true });
     if (error) return [];
-    return (data ?? []) as InfoSlide[];
+    return ((data ?? []) as InfoSlide[]).map((s) => ({
+      ...s,
+      transisi_ms: Number(s.transisi_ms) > 0 ? Number(s.transisi_ms) : 500,
+    }));
   } catch {
     return [];
   }
@@ -73,4 +78,18 @@ export function embedVideoSrc(url: string) {
 /** Sumber media slide (URL langsung atau ID file Google Drive). */
 export function infoMediaSrc(value: string, size = 1200) {
   return slideImageSrc(value, size);
+}
+
+/** ID file Google Drive bila media berasal dari unggahan Drive. */
+export function infoDriveId(value: string): string | null {
+  const raw = value.trim();
+  if (!raw) return null;
+  const id = extractDriveId(raw);
+  if (id) return id;
+  return /^(https?:|data:|blob:)/i.test(raw) ? null : raw;
+}
+
+/** Pemutar video Google Drive (dipasang lewat iframe preview). */
+export function driveVideoEmbed(id: string) {
+  return `https://drive.google.com/file/d/${id}/preview`;
 }

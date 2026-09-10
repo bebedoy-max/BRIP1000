@@ -150,7 +150,7 @@ export const menuItems: MenuItem[] = [
   {
     key: "akses",
     to: "/admin/akses",
-    label: "Akses Halaman",
+    label: "Pengaturan Halaman",
     icon: SlidersHorizontal,
     defaults: ["super_admin"],
   },

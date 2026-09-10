@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, Building2, CreditCard, Users, CalendarDays } from "lucide-react";
+import { Banknote, Building2, CreditCard, Users, CalendarDays, QrCode } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PublicLayout } from "@/components/PublicLayout";
 import { ProjectSummary } from "@/components/ProjectSummary";
@@ -94,6 +94,7 @@ function Index() {
       ukers: await count("ukers"),
       atm: (await count("atm_machines")) + (await count("crm_machines")),
       edc: await count("edc_machines"),
+      qris: await count("qris_merchants"),
       employees: await count("employees"),
       projects: await count("projects"),
       events: await count("events"),
@@ -105,6 +106,7 @@ function Index() {
     { label: "Unit Kerja", value: stats.data?.ukers ?? "—", icon: Building2, hint: "Uker aktif terdaftar", detailKey: "uker" },
     { label: "ATM/CRM", value: stats.data?.atm ?? "—", icon: Banknote, hint: "Termonitor", detailKey: "atm" },
     { label: "Mesin EDC", value: stats.data?.edc ?? "—", icon: CreditCard, hint: "Merchant terpasang", detailKey: "edc" },
+    { label: "Qris", value: stats.data?.qris ?? "—", icon: QrCode, hint: "Merchant QRIS", detailKey: "qris" },
     { label: "Pegawai", value: stats.data?.employees ?? "—", icon: Users, hint: "Seluruh unit kerja", detailKey: "pegawai" },
     { label: "Project IT", value: stats.data?.projects ?? "—", icon: CalendarDays, hint: "Project berjalan", detailKey: "project" },
     { label: "Event", value: stats.data?.events ?? "—", icon: CalendarDays, hint: "Acara & kegiatan", detailKey: "event" },

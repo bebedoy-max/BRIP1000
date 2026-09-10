@@ -13,6 +13,8 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
+import { AppearanceProvider } from "@/components/AppearanceProvider";
+
 
 
 function NotFoundComponent() {
@@ -113,7 +115,7 @@ function RootShell({ children }: { children: ReactNode }) {
       : null;
 
   return (
-    <html lang="id">
+    <html lang="id" data-theme="biru" data-font="nasalization">
       <head>
         <HeadContent />
         {publicConfig?.url && publicConfig?.key ? (
@@ -138,11 +140,13 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <AppearanceProvider />
       <ConfirmProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
       </ConfirmProvider>
       <Toaster position="top-center" richColors />
+
     </QueryClientProvider>
   );
 

@@ -5,7 +5,10 @@
 /* Font Nasalization (Typodermic Fonts) — dihosting sendiri di /public/fonts agar tetap ter-load di hosting mana pun. */
 @font-face {
   font-family: "Nasalization";
-  src: url("/fonts/Nasalization-Rg.otf") format("opentype");
+  src:
+    url("/fonts/Nasalization-Rg.otf") format("opentype"),
+    url("/__l5e/assets-v1/433afa50-b184-48a8-835a-f749aad81784/Nasalization-Rg.otf")
+      format("opentype");
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
@@ -83,63 +86,69 @@
 
 /* Dark Blue Metallic — brushed steel navy, cool glassmorphism */
 :root {
+  /* Variabel tema global: seluruh warna aplikasi diturunkan dari 3 variabel ini,
+     sehingga menu/halaman baru otomatis ikut tema yang dipilih Super Admin. */
+  --th-h: 250;
+  --th-h2: 226;
+  --th-cf: 1;
+
   --radius: 1.125rem;
-  --background: oklch(0.16 0.03 250);
-  --foreground: oklch(0.97 0.005 250);
-  --card: oklch(0.24 0.028 250 / 58%);
-  --card-foreground: oklch(0.97 0.005 250);
-  --popover: oklch(0.21 0.03 250);
-  --popover-foreground: oklch(0.97 0.005 250);
-  --primary: oklch(0.58 0.13 248);
-  --primary-foreground: oklch(0.99 0.004 250);
-  --secondary: oklch(0.29 0.03 248);
-  --secondary-foreground: oklch(0.94 0.01 250);
-  --muted: oklch(0.27 0.028 248);
-  --muted-foreground: oklch(0.74 0.02 245);
-  --accent: oklch(0.72 0.09 226);
-  --accent-foreground: oklch(0.16 0.03 250);
+  --background: oklch(0.16 calc(0.03 * var(--th-cf)) var(--th-h));
+  --foreground: oklch(0.97 calc(0.005 * var(--th-cf)) var(--th-h));
+  --card: oklch(0.24 calc(0.028 * var(--th-cf)) var(--th-h) / 58%);
+  --card-foreground: oklch(0.97 calc(0.005 * var(--th-cf)) var(--th-h));
+  --popover: oklch(0.21 calc(0.03 * var(--th-cf)) var(--th-h));
+  --popover-foreground: oklch(0.97 calc(0.005 * var(--th-cf)) var(--th-h));
+  --primary: oklch(0.58 calc(0.13 * var(--th-cf)) var(--th-h));
+  --primary-foreground: oklch(0.99 calc(0.004 * var(--th-cf)) var(--th-h));
+  --secondary: oklch(0.29 calc(0.03 * var(--th-cf)) var(--th-h));
+  --secondary-foreground: oklch(0.94 calc(0.01 * var(--th-cf)) var(--th-h));
+  --muted: oklch(0.27 calc(0.028 * var(--th-cf)) var(--th-h));
+  --muted-foreground: oklch(0.74 calc(0.02 * var(--th-cf)) var(--th-h));
+  --accent: oklch(0.72 calc(0.09 * var(--th-cf)) var(--th-h2));
+  --accent-foreground: oklch(0.16 calc(0.03 * var(--th-cf)) var(--th-h));
   --destructive: oklch(0.62 0.2 24);
-  --destructive-foreground: oklch(0.99 0.004 250);
+  --destructive-foreground: oklch(0.99 calc(0.004 * var(--th-cf)) var(--th-h));
   --success: oklch(0.74 0.12 175);
   --warning: oklch(0.82 0.14 85);
-  --info: oklch(0.72 0.11 235);
-  --brand: oklch(0.55 0.13 250);
-  --brand-foreground: oklch(0.99 0.004 250);
-  --diary-frame: oklch(0.38 0.055 249);
-  --diary-frame-foreground: oklch(0.95 0.012 250);
-  --border: oklch(0.85 0.03 240 / 14%);
-  --input: oklch(0.85 0.03 240 / 14%);
-  --ring: oklch(0.66 0.12 245);
-  --chart-1: oklch(0.64 0.13 248);
-  --chart-2: oklch(0.72 0.1 220);
+  --info: oklch(0.72 calc(0.11 * var(--th-cf)) var(--th-h2));
+  --brand: oklch(0.55 calc(0.13 * var(--th-cf)) var(--th-h));
+  --brand-foreground: oklch(0.99 calc(0.004 * var(--th-cf)) var(--th-h));
+  --diary-frame: oklch(0.38 calc(0.055 * var(--th-cf)) var(--th-h));
+  --diary-frame-foreground: oklch(0.95 calc(0.012 * var(--th-cf)) var(--th-h));
+  --border: oklch(0.85 calc(0.03 * var(--th-cf)) var(--th-h) / 14%);
+  --input: oklch(0.85 calc(0.03 * var(--th-cf)) var(--th-h) / 14%);
+  --ring: oklch(0.66 calc(0.12 * var(--th-cf)) var(--th-h));
+  --chart-1: oklch(0.64 calc(0.13 * var(--th-cf)) var(--th-h));
+  --chart-2: oklch(0.72 calc(0.1 * var(--th-cf)) var(--th-h2));
   --chart-3: oklch(0.74 0.12 175);
   --chart-4: oklch(0.82 0.14 85);
-  --chart-5: oklch(0.6 0.08 265);
-  --sidebar: oklch(0.19 0.03 250 / 72%);
-  --sidebar-foreground: oklch(0.94 0.01 250);
-  --sidebar-primary: oklch(0.58 0.13 248);
-  --sidebar-primary-foreground: oklch(0.99 0.004 250);
-  --sidebar-accent: oklch(0.3 0.03 248);
-  --sidebar-accent-foreground: oklch(0.97 0.005 250);
-  --sidebar-border: oklch(0.85 0.03 240 / 14%);
-  --sidebar-ring: oklch(0.66 0.12 245);
+  --chart-5: oklch(0.6 calc(0.08 * var(--th-cf)) var(--th-h));
+  --sidebar: oklch(0.19 calc(0.03 * var(--th-cf)) var(--th-h) / 72%);
+  --sidebar-foreground: oklch(0.94 calc(0.01 * var(--th-cf)) var(--th-h));
+  --sidebar-primary: oklch(0.58 calc(0.13 * var(--th-cf)) var(--th-h));
+  --sidebar-primary-foreground: oklch(0.99 calc(0.004 * var(--th-cf)) var(--th-h));
+  --sidebar-accent: oklch(0.3 calc(0.03 * var(--th-cf)) var(--th-h));
+  --sidebar-accent-foreground: oklch(0.97 calc(0.005 * var(--th-cf)) var(--th-h));
+  --sidebar-border: oklch(0.85 calc(0.03 * var(--th-cf)) var(--th-h) / 14%);
+  --sidebar-ring: oklch(0.66 calc(0.12 * var(--th-cf)) var(--th-h));
 
   --gradient-page: radial-gradient(
       1100px 700px at 12% -10%,
-      oklch(0.34 0.1 252 / 55%),
+      oklch(0.34 calc(0.1 * var(--th-cf)) var(--th-h) / 55%),
       transparent 60%
     ),
-    radial-gradient(900px 600px at 92% 0%, oklch(0.32 0.08 225 / 48%), transparent 55%),
-    radial-gradient(900px 700px at 60% 110%, oklch(0.26 0.06 245 / 45%), transparent 60%);
+    radial-gradient(900px 600px at 92% 0%, oklch(0.32 calc(0.08 * var(--th-cf)) var(--th-h2) / 48%), transparent 55%),
+    radial-gradient(900px 700px at 60% 110%, oklch(0.26 calc(0.06 * var(--th-cf)) var(--th-h) / 45%), transparent 60%);
   --gradient-card: linear-gradient(
     127deg,
-    oklch(0.32 0.035 248 / 80%) 0%,
-    oklch(0.2 0.03 250 / 62%) 100%
+    oklch(0.32 calc(0.035 * var(--th-cf)) var(--th-h) / 80%) 0%,
+    oklch(0.2 calc(0.03 * var(--th-cf)) var(--th-h) / 62%) 100%
   );
-  --gradient-brand: linear-gradient(135deg, oklch(0.58 0.13 248), oklch(0.7 0.09 222));
-  --gradient-stat: linear-gradient(135deg, oklch(0.6 0.13 248), oklch(0.52 0.09 235));
-  --shadow-glass: 0 20px 45px -20px oklch(0.09 0.04 250 / 92%);
-  --shadow-glow: 0 0 0 1px oklch(0.9 0.02 240 / 12%), 0 18px 40px -18px oklch(0.58 0.13 248 / 65%);
+  --gradient-brand: linear-gradient(135deg, oklch(0.58 calc(0.13 * var(--th-cf)) var(--th-h)), oklch(0.7 calc(0.09 * var(--th-cf)) var(--th-h2)));
+  --gradient-stat: linear-gradient(135deg, oklch(0.6 calc(0.13 * var(--th-cf)) var(--th-h)), oklch(0.52 calc(0.09 * var(--th-cf)) var(--th-h2)));
+  --shadow-glass: 0 20px 45px -20px oklch(0.09 calc(0.04 * var(--th-cf)) var(--th-h) / 92%);
+  --shadow-glow: 0 0 0 1px oklch(0.9 calc(0.02 * var(--th-cf)) var(--th-h) / 12%), 0 18px 40px -18px oklch(0.58 calc(0.13 * var(--th-cf)) var(--th-h) / 65%);
 }
 
 .dark {
@@ -172,10 +181,10 @@
     ),
     linear-gradient(
       100deg,
-      oklch(0.36 0.04 250 / 88%) 0%,
-      oklch(0.27 0.035 248 / 82%) 38%,
-      oklch(0.22 0.03 250 / 86%) 62%,
-      oklch(0.31 0.038 245 / 84%) 100%
+      oklch(0.36 calc(0.04 * var(--th-cf)) var(--th-h) / 88%) 0%,
+      oklch(0.27 calc(0.035 * var(--th-cf)) var(--th-h) / 82%) 38%,
+      oklch(0.22 calc(0.03 * var(--th-cf)) var(--th-h) / 86%) 62%,
+      oklch(0.31 calc(0.038 * var(--th-cf)) var(--th-h) / 84%) 100%
     );
   border: 1px solid oklch(1 0 0 / 10%);
   border-top-color: oklch(1 0 0 / 26%);
@@ -186,8 +195,8 @@
     inset 0 -1px 0 oklch(0 0 0 / 32%),
     inset 1px 0 0 oklch(1 0 0 / 6%),
     0 1px 2px oklch(0 0 0 / 40%),
-    0 10px 22px -12px oklch(0.05 0.03 250 / 85%),
-    0 26px 50px -26px oklch(0.05 0.03 250 / 95%);
+    0 10px 22px -12px oklch(0.05 calc(0.03 * var(--th-cf)) var(--th-h) / 85%),
+    0 26px 50px -26px oklch(0.05 calc(0.03 * var(--th-cf)) var(--th-h) / 95%);
   backdrop-filter: blur(18px) saturate(130%);
 
   &::after {
@@ -213,11 +222,11 @@
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.25;
-  color: oklch(0.97 0.02 250);
+  color: oklch(0.97 calc(0.02 * var(--th-cf)) var(--th-h));
   text-shadow:
-    0 0 6px oklch(0.58 0.13 248 / 80%),
-    0 0 18px oklch(0.58 0.13 248 / 55%),
-    0 0 36px oklch(0.72 0.09 226 / 40%);
+    0 0 6px oklch(0.58 calc(0.13 * var(--th-cf)) var(--th-h) / 80%),
+    0 0 18px oklch(0.58 calc(0.13 * var(--th-cf)) var(--th-h) / 55%),
+    0 0 36px oklch(0.72 calc(0.09 * var(--th-cf)) var(--th-h2) / 40%);
 }
 
 @utility gradient-text {
@@ -230,9 +239,9 @@
   position: relative;
   background-image: linear-gradient(
     180deg,
-    oklch(0.34 0.04 248 / 78%) 0%,
-    oklch(0.26 0.035 250 / 82%) 40%,
-    oklch(0.22 0.03 250 / 86%) 100%
+    oklch(0.34 calc(0.04 * var(--th-cf)) var(--th-h) / 78%) 0%,
+    oklch(0.26 calc(0.035 * var(--th-cf)) var(--th-h) / 82%) 40%,
+    oklch(0.22 calc(0.03 * var(--th-cf)) var(--th-h) / 86%) 100%
   );
   border: 1px solid oklch(1 0 0 / 12%);
   border-top-color: oklch(1 0 0 / 28%);
@@ -241,7 +250,7 @@
   box-shadow:
     inset 0 1px 0 oklch(1 0 0 / 16%),
     inset 0 -2px 0 oklch(0 0 0 / 28%),
-    0 4px 8px -4px oklch(0.05 0.03 250 / 70%);
+    0 4px 8px -4px oklch(0.05 calc(0.03 * var(--th-cf)) var(--th-h) / 70%);
   backdrop-filter: blur(12px) saturate(120%);
   color: var(--color-foreground);
 
@@ -265,19 +274,19 @@
   position: relative;
   background-image: linear-gradient(
     180deg,
-    oklch(0.42 0.06 248 / 82%) 0%,
-    oklch(0.32 0.05 250 / 86%) 40%,
-    oklch(0.26 0.045 250 / 90%) 100%
+    oklch(0.42 calc(0.06 * var(--th-cf)) var(--th-h) / 82%) 0%,
+    oklch(0.32 calc(0.05 * var(--th-cf)) var(--th-h) / 86%) 40%,
+    oklch(0.26 calc(0.045 * var(--th-cf)) var(--th-h) / 90%) 100%
   );
-  border: 1px solid oklch(0.75 0.08 248 / 35%);
+  border: 1px solid oklch(0.75 calc(0.08 * var(--th-cf)) var(--th-h) / 35%);
   border-top-color: oklch(1 0 0 / 34%);
   border-bottom-color: oklch(0 0 0 / 42%);
   border-radius: var(--radius-xl);
   box-shadow:
     inset 0 1px 0 oklch(1 0 0 / 22%),
     inset 0 -2px 0 oklch(0 0 0 / 34%),
-    0 0 0 1px oklch(0.58 0.13 248 / 25%),
-    0 8px 18px -8px oklch(0.58 0.13 248 / 55%);
+    0 0 0 1px oklch(0.58 calc(0.13 * var(--th-cf)) var(--th-h) / 25%),
+    0 8px 18px -8px oklch(0.58 calc(0.13 * var(--th-cf)) var(--th-h) / 55%);
   backdrop-filter: blur(14px) saturate(130%);
   color: var(--color-foreground);
 
@@ -1197,7 +1206,8 @@
 
 .doa-screen {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   scroll-snap-align: start;
   flex-direction: column;
   background: transparent;
@@ -1260,9 +1270,21 @@
 .doa-body {
   display: flex;
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scroll-behavior: smooth;
   flex-direction: column;
   gap: 0.5rem;
-  padding: 1rem 1.25rem 2rem;
+  padding: 0 1.25rem 2rem;
+}
+
+.doa-row-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  /* Menempel langsung di bawah header bagian, tanpa celah kosong. */
+  margin-bottom: 0.25rem;
+  background: var(--background);
 }
 
 .doa-row {
@@ -1274,7 +1296,84 @@
 }
 
 .doa-row-head {
-  padding-bottom: 0.25rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.5rem;
+}
+
+/* Ruang kosong agar baris pertama & terakhir tetap bisa berada di tengah layar. */
+.doa-spacer {
+  flex: 0 0 auto;
+  height: 30vh;
+}
+.doa-spacer-end {
+  height: 45vh;
+}
+
+/* Zoom highlight: baris aktif membesar ke atas-bawah, lebar kolom tetap penuh
+   agar kolom nama & kehadiran tidak terpotong. */
+.doa-row-zoom {
+  width: 100%;
+  transition:
+    opacity 0.45s ease,
+    margin 0.45s ease,
+    font-size 0.45s ease;
+}
+.doa-row-zoom .doa-pill,
+.doa-row-zoom .doa-name,
+.doa-row-zoom .doa-jabatan,
+.doa-row-zoom .doa-input,
+.doa-row-zoom .doa-select,
+.doa-row-zoom .doa-mark,
+.doa-row-zoom .doa-day-chip {
+  transition:
+    min-height 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    font-size 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.45s ease,
+    height 0.45s ease;
+}
+
+.doa-row-zoom[data-dist="0"] {
+  opacity: 1;
+  margin: 1rem 0;
+}
+.doa-row-zoom[data-dist="0"] .doa-pill {
+  min-height: 5rem;
+  border-width: 3px;
+  box-shadow: 0 18px 45px -20px rgba(0, 0, 0, 0.65);
+}
+.doa-row-zoom[data-dist="0"] .doa-name {
+  font-size: clamp(1.4rem, 2.2vw, 2.4rem);
+  font-weight: 800;
+  line-height: 1.1;
+}
+/* Kolom pendukung: font lebih kecil agar muat rapi dalam satu/dua baris. */
+.doa-row-zoom[data-dist="0"] .doa-jabatan,
+.doa-row-zoom[data-dist="0"] .doa-input,
+.doa-row-zoom[data-dist="0"] .doa-select {
+  font-size: clamp(0.95rem, 1.15vw, 1.3rem);
+  font-weight: 600;
+  line-height: 1.15;
+}
+.doa-row-zoom[data-dist="0"] .doa-mark {
+  width: 2.9rem;
+  height: 2.9rem;
+}
+
+.doa-row-zoom[data-dist="1"] {
+  opacity: 0.7;
+}
+.doa-row-zoom[data-dist="2"] {
+  opacity: 0.5;
+}
+.doa-row-zoom[data-dist="3"] {
+  opacity: 0.38;
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .doa-row-zoom {
+    transition: none;
+  }
 }
 
 .doa-col-label {
@@ -1340,6 +1439,20 @@
   color: var(--foreground);
   font-size: clamp(0.8rem, 1.1vw, 1.05rem);
   outline: none;
+}
+
+/* Kehadiran tampil sebagai teks saja: tanpa kotak dan tanpa panah dropdown. */
+.doa-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  box-shadow: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.doa-select::-ms-expand {
+  display: none;
 }
 
 .doa-input::placeholder {
@@ -1524,3 +1637,454 @@
   color: var(--secondary-foreground);
   box-shadow: none;
 }
+
+/* Layar "Absensi Selesai": tampilan besar, mewah, di tengah layar. */
+.doa-done {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5rem;
+  padding: 4vh 6vw;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      ellipse at 50% 0%,
+      color-mix(in oklab, var(--primary) 22%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse at 50% 110%,
+      color-mix(in oklab, var(--primary) 14%, transparent),
+      transparent 55%
+    );
+}
+
+.doa-done::before {
+  content: "";
+  position: absolute;
+  inset: -30% -10% auto -10%;
+  height: 70%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    color-mix(in oklab, var(--primary) 18%, transparent),
+    transparent 65%
+  );
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+.doa-done-inner {
+  position: relative;
+  z-index: 1;
+  width: min(1100px, 92vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  padding: clamp(2rem, 5vh, 4rem) clamp(1.5rem, 5vw, 4rem);
+  border-radius: 2rem;
+  border: 1px solid color-mix(in oklab, var(--primary) 30%, transparent);
+  background: color-mix(in oklab, var(--background) 65%, transparent);
+  backdrop-filter: blur(18px);
+  box-shadow:
+    0 40px 120px -40px color-mix(in oklab, var(--primary) 55%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 12%, transparent);
+  animation: doa-done-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes doa-done-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.doa-done-logo {
+  width: min(720px, 80%);
+  height: auto;
+  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.55));
+}
+
+.doa-done-rule {
+  width: min(420px, 70%);
+  height: 2px;
+  border: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--primary) 80%, transparent),
+    transparent
+  );
+}
+
+.doa-done-title {
+  font-size: clamp(2.4rem, 6vw, 5rem);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.05;
+  text-transform: uppercase;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--foreground) 96%, transparent),
+    color-mix(in oklab, var(--primary) 70%, var(--foreground))
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.doa-done-sub {
+  font-size: clamp(1rem, 1.8vw, 1.6rem);
+  color: color-mix(in oklab, var(--foreground) 78%, transparent);
+  max-width: 46ch;
+}
+
+.doa-done-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem 1rem;
+}
+
+.doa-done-chip {
+  padding: 0.6rem 1.4rem;
+  border-radius: 999px;
+  font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border: 1px solid color-mix(in oklab, var(--primary) 40%, transparent);
+  background: color-mix(in oklab, var(--primary) 14%, transparent);
+  color: color-mix(in oklab, var(--foreground) 92%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doa-done-inner {
+    animation: none;
+  }
+}
+
+
+/* Tombol pil "Enter" pada layar pembuka absensi. */
+.doa-enter-pill {
+  margin-top: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1.6rem 0.9rem 1rem;
+  border-radius: 999px;
+  cursor: pointer;
+  border: 1px solid color-mix(in oklab, var(--primary) 45%, transparent);
+  background: color-mix(in oklab, var(--primary) 16%, transparent);
+  color: color-mix(in oklab, var(--foreground) 92%, transparent);
+  box-shadow: 0 18px 50px -20px color-mix(in oklab, var(--primary) 70%, transparent);
+  transition: transform 0.2s ease, background 0.2s ease;
+  animation: doa-enter-pulse 2.2s ease-in-out infinite;
+}
+
+.doa-enter-pill:hover {
+  transform: translateY(-2px);
+  background: color-mix(in oklab, var(--primary) 26%, transparent);
+}
+
+.doa-enter-key {
+  padding: 0.35rem 1rem;
+  border-radius: 999px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: clamp(0.85rem, 1.2vw, 1.05rem);
+  background: color-mix(in oklab, var(--primary) 75%, transparent);
+  color: var(--primary-foreground);
+}
+
+.doa-enter-text {
+  font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+  letter-spacing: 0.02em;
+}
+
+@keyframes doa-enter-pulse {
+  0%, 100% { box-shadow: 0 18px 50px -20px color-mix(in oklab, var(--primary) 70%, transparent); }
+  50% { box-shadow: 0 22px 70px -18px color-mix(in oklab, var(--primary) 95%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doa-enter-pill { animation: none; }
+}
+
+/* ================= Pengaturan Tampilan: Tema Warna ================= */
+/* Tema diterapkan lewat atribut data-theme pada <html>. Semua warna aplikasi
+   memakai variabel --th-h / --th-h2 / --th-cf sehingga halaman & menu baru
+   otomatis mengikuti tema yang dipilih tanpa perubahan kode tambahan. */
+[data-theme="biru"] {
+  --th-h: 250;
+  --th-h2: 226;
+  --th-cf: 1;
+}
+[data-theme="zamrud"] {
+  --th-h: 168;
+  --th-h2: 150;
+  --th-cf: 1;
+}
+[data-theme="nebula"] {
+  --th-h: 300;
+  --th-h2: 270;
+  --th-cf: 1.05;
+}
+[data-theme="senja"] {
+  --th-h: 45;
+  --th-h2: 25;
+  --th-cf: 1.05;
+}
+[data-theme="titanium"] {
+  --th-h: 255;
+  --th-h2: 245;
+  --th-cf: 0.25;
+}
+
+/* ================= Pengaturan Tampilan: Font ================= */
+/* Seluruh font dihosting sendiri di /public/fonts agar tetap ter-load di
+   hosting mana pun. Menambah font baru cukup: taruh file di /public/fonts,
+   tambah @font-face di sini + entri pada src/lib/appearance.ts. */
+@font-face {
+  font-family: "Enjoy Journey";
+  src: url("/fonts/EnjoyJourney-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Spheris";
+  src: url("/fonts/Spheris-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Spheris";
+  src: url("/fonts/Spheris-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Hey Comic";
+  src: url("/fonts/HeyComic-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Tussilago";
+  src: url("/fonts/Tussilago-Regular.otf") format("opentype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Butler";
+  src: url("/fonts/Butler-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Butler";
+  src: url("/fonts/Butler-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "KG Red Hands";
+  src: url("/fonts/KGRedHands-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Last Christmas";
+  src: url("/fonts/LastChristmas-Regular.otf") format("opentype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Signatra";
+  src: url("/fonts/Signatra-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Comfortaa";
+  src: url("/fonts/Comfortaa-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Comfortaa";
+  src: url("/fonts/Comfortaa-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Avengeance";
+  src: url("/fonts/Avengeance-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Avengeance";
+  src: url("/fonts/Avengeance-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Bebas Neue";
+  src: url("/fonts/BebasNeue-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "The Magic Cookie";
+  src: url("/fonts/TheMagicCookie-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Apple Garamond";
+  src: url("/fonts/AppleGaramond-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Apple Garamond";
+  src: url("/fonts/AppleGaramond-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Creato Display";
+  src: url("/fonts/CreatoDisplay-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Creato Display";
+  src: url("/fonts/CreatoDisplay-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gang of Three";
+  src: url("/fonts/gang-of-three.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Airstrike";
+  src: url("/fonts/airstrike.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Machille";
+  src: url("/fonts/machille.otf") format("opentype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Mermaid";
+  src: url("/fonts/mermaid.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "La Petite Chanteuse";
+  src: url("/fonts/la-petite-chanteuse.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Old Newspaper Types";
+  src: url("/fonts/oldnewspapertypes.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Granesta";
+  src: url("/fonts/granesta.otf") format("opentype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Grime Slime";
+  src: url("/fonts/grime-slime.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Peanut Butter";
+  src: url("/fonts/peanut-butter.otf") format("opentype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Game of Squids";
+  src: url("/fonts/game-of-squids.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Black Chancery";
+  src: url("/fonts/black-chancery.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Maloney";
+  src: url("/fonts/maloney.otf") format("opentype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Bakeri";
+  src: url("/fonts/bakeri.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Magnolia Script";
+  src: url("/fonts/magnolia-script.otf") format("opentype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Dunkin";
+  src: url("/fonts/dunkin.otf") format("opentype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Dream Orphans";
+  src: url("/fonts/dream-orphans.otf") format("opentype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Long Shot";
+  src: url("/fonts/long-shot.ttf") format("truetype");
+  font-display: swap;
+}
+
+/* Font aplikasi dipilih lewat atribut data-font pada <html>. */
+html[data-font] body,
+html[data-font] {
+  font-family: var(--app-font, var(--font-sans));
+}
+[data-font="nasalization"] { --app-font: "Nasalization", ui-sans-serif, system-ui, sans-serif; }
+[data-font="enjoy-journey"] { --app-font: "Enjoy Journey", ui-sans-serif, system-ui, sans-serif; }
+[data-font="spheris"] { --app-font: "Spheris", ui-sans-serif, system-ui, sans-serif; }
+[data-font="hey-comic"] { --app-font: "Hey Comic", ui-sans-serif, system-ui, sans-serif; }
+[data-font="tussilago"] { --app-font: "Tussilago", ui-serif, Georgia, serif; }
+[data-font="butler"] { --app-font: "Butler", ui-serif, Georgia, serif; }
+[data-font="kg-red-hands"] { --app-font: "KG Red Hands", ui-sans-serif, system-ui, sans-serif; }
+[data-font="last-christmas"] { --app-font: "Last Christmas", ui-sans-serif, system-ui, sans-serif; }
+[data-font="signatra"] { --app-font: "Signatra", cursive, ui-sans-serif, sans-serif; }
+[data-font="comfortaa"] { --app-font: "Comfortaa", ui-sans-serif, system-ui, sans-serif; }
+[data-font="avengeance"] { --app-font: "Avengeance", ui-sans-serif, system-ui, sans-serif; }
+[data-font="bebas-neue"] { --app-font: "Bebas Neue", ui-sans-serif, system-ui, sans-serif; }
+[data-font="the-magic-cookie"] { --app-font: "The Magic Cookie", ui-sans-serif, system-ui, sans-serif; }
+[data-font="apple-garamond"] { --app-font: "Apple Garamond", ui-serif, Georgia, serif; }
+[data-font="creato-display"] { --app-font: "Creato Display", ui-sans-serif, system-ui, sans-serif; }
+[data-font="gang-of-three"] { --app-font: "Gang of Three", ui-sans-serif, system-ui, sans-serif; }
+[data-font="airstrike"] { --app-font: "Airstrike", ui-sans-serif, system-ui, sans-serif; }
+[data-font="machille"] { --app-font: "Machille", ui-sans-serif, system-ui, sans-serif; }
+[data-font="mermaid"] { --app-font: "Mermaid", ui-sans-serif, system-ui, sans-serif; }
+[data-font="la-petite-chanteuse"] { --app-font: "La Petite Chanteuse", cursive, ui-sans-serif, sans-serif; }
+[data-font="oldnewspapertypes"] { --app-font: "Old Newspaper Types", ui-serif, Georgia, serif; }
+[data-font="granesta"] { --app-font: "Granesta", ui-serif, Georgia, serif; }
+[data-font="grime-slime"] { --app-font: "Grime Slime", ui-sans-serif, system-ui, sans-serif; }
+[data-font="peanut-butter"] { --app-font: "Peanut Butter", ui-sans-serif, system-ui, sans-serif; }
+[data-font="game-of-squids"] { --app-font: "Game of Squids", ui-sans-serif, system-ui, sans-serif; }
+[data-font="black-chancery"] { --app-font: "Black Chancery", ui-serif, Georgia, serif; }
+[data-font="maloney"] { --app-font: "Maloney", ui-sans-serif, system-ui, sans-serif; }
+[data-font="bakeri"] { --app-font: "Bakeri", ui-sans-serif, system-ui, sans-serif; }
+[data-font="magnolia-script"] { --app-font: "Magnolia Script", cursive, ui-sans-serif, sans-serif; }
+[data-font="dunkin"] { --app-font: "Dunkin", ui-sans-serif, system-ui, sans-serif; }
+[data-font="dream-orphans"] { --app-font: "Dream Orphans", ui-sans-serif, system-ui, sans-serif; }
+[data-font="long-shot"] { --app-font: "Long Shot", ui-sans-serif, system-ui, sans-serif; }
