@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -80,6 +80,13 @@ function TampilanTab() {
   const theme = appearance.data?.theme_key ?? DEFAULT_THEME;
   const font = appearance.data?.font_key ?? DEFAULT_FONT;
 
+  // Muat semua font agar setiap kartu langsung tampil dengan huruf aslinya.
+  useEffect(() => {
+    if (typeof document === "undefined" || !document.fonts) return;
+    for (const f of fontOptions) void document.fonts.load(`24px "${f.label}"`).catch(() => {});
+  }, []);
+
+
   function pilih(v: { theme_key?: string; font_key?: string }) {
     if (!isSuperadmin) return;
     save.mutate(v, {
@@ -160,10 +167,7 @@ function TampilanTab() {
                   </span>
                   {active ? <Check className="size-4 text-primary" /> : null}
                 </div>
-                <p
-                  className="mt-2 truncate text-2xl"
-                  style={{ fontFamily: `"${f.label}", ui-sans-serif, system-ui, sans-serif` }}
-                >
+                <p className="mt-2 truncate text-2xl" data-font={f.key} data-font-preview="">
                   BRI BO Pringsewu 123
                 </p>
               </button>

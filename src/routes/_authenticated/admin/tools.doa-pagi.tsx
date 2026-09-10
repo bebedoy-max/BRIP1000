@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Building2, Loader2, Save, X } from "lucide-react";
+import { Building2, LayoutDashboard, Loader2, Save, X } from "lucide-react";
 import { toast } from "sonner";
 
 import logoBo from "@/assets/doa/b1000.png";
@@ -107,16 +107,23 @@ function UkerDialog({ onPick }: { onPick: (u: { id: string; nama: string }) => v
 }
 
 /**
- * Penanda harian: kosong (bulat putih) sampai ada absen pada hari itu,
- * lalu ceklis bila QRIS terisi, silang bila hari sudah lewat tanpa QRIS.
+ * Penanda harian: kosong (bulat polos) sampai ada absen pada hari itu,
+ * lalu ceklis bila QRIS terisi, silang bila QRIS ditandai kosong.
+ * Hari tanpa data tetap menampilkan lingkaran polos tanpa ikon.
  */
-function DayMark({ state, anim }: { state: "ok" | "no" | "empty"; anim?: boolean }) {
+function DayMark({ state, anim }: { state: "ok" | "no" | "empty" | "blank"; anim?: boolean }) {
+  const isBlank = state === "blank";
   const src = state === "ok" ? iconCeklis : state === "no" ? iconSilang : iconCircle;
-  const alt =
-    state === "ok" ? "Hadir" : state === "no" ? "Tidak absen QRIS" : "Belum ada absensi";
+  const alt = isBlank
+    ? "Tidak ada data absensi"
+    : state === "ok"
+      ? "Hadir"
+      : state === "no"
+        ? "Tidak absen QRIS"
+        : "Belum ada absensi";
   return (
     <span className={`doa-mark${anim ? " doa-mark-drop" : ""}`} data-state={state}>
-      <img src={src} alt={alt} />
+      <img src={src} alt={alt} className={isBlank ? "doa-mark-blank" : undefined} />
     </span>
   );
 }
@@ -248,13 +255,15 @@ function SectionScreen({
                   {dates.map((d) => {
                     const markKey = recordKey(section.id, nama, d);
                     const rec = committed[markKey];
-                    // Hari ini tetap bulat putih sampai admin absen QRIS;
-                    // silang hanya muncul bila QRIS diisi "Kosong" secara eksplisit.
+                    // Silang hanya bila QRIS diisi "Kosong" secara eksplisit.
+                    // Hari lampau tanpa data dibiarkan polos, hari ini/mendatang bulat putih.
                     const state = isQrisFilled(rec?.qris)
                       ? "ok"
-                      : d < today || rec?.qris === QRIS_KOSONG
+                      : rec?.qris === QRIS_KOSONG
                         ? "no"
-                        : "empty";
+                        : !rec && d < today
+                          ? "blank"
+                          : "empty";
                     return <DayMark key={d} state={state} anim={animKey === markKey} />;
                   })}
 
@@ -706,6 +715,13 @@ function Page() {
               <span className="doa-done-chip">{uker.nama}</span>
               <span className="doa-done-chip">{tanggalPanjang}</span>
             </div>
+            <Link
+              to="/admin"
+              className="doa-done-dashboard inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold"
+            >
+              <LayoutDashboard className="size-4" />
+              Kembali ke Dashboard
+            </Link>
           </div>
         </div>
       </div>

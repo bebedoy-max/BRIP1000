@@ -52,6 +52,66 @@ export const themePresets: ThemePreset[] = [
     description: "Netral monokrom, minim warna dan sangat kalem.",
     swatch: ["oklch(0.58 0.033 255)", "oklch(0.7 0.022 245)", "oklch(0.24 0.008 255)"],
   },
+  {
+    key: "tosca",
+    label: "Tosca Cerah",
+    description: "Biru toska terang, segar dan bersih.",
+    swatch: ["oklch(0.7 0.19 195)", "oklch(0.82 0.16 172)", "oklch(0.34 0.09 195)"],
+  },
+  {
+    key: "magenta",
+    label: "Magenta Ceria",
+    description: "Pink magenta cerah, tampil mencolok.",
+    swatch: ["oklch(0.68 0.22 340)", "oklch(0.8 0.17 310)", "oklch(0.34 0.1 340)"],
+  },
+  {
+    key: "mentari",
+    label: "Kuning Mentari",
+    description: "Kuning keemasan terang, ceria dan hangat.",
+    swatch: ["oklch(0.78 0.19 85)", "oklch(0.87 0.16 60)", "oklch(0.36 0.09 85)"],
+  },
+  {
+    key: "limau",
+    label: "Hijau Limau",
+    description: "Hijau limau menyala, kesan energik.",
+    swatch: ["oklch(0.74 0.2 140)", "oklch(0.85 0.16 115)", "oklch(0.34 0.09 140)"],
+  },
+  {
+    key: "permen",
+    label: "Koral Permen",
+    description: "Koral–pink manis, cerah dan lembut.",
+    swatch: ["oklch(0.7 0.2 20)", "oklch(0.8 0.16 350)", "oklch(0.34 0.1 20)"],
+  },
+  {
+    key: "putih-biru",
+    label: "Putih Biru",
+    description: "Dasar putih bersih dengan aksen biru korporat.",
+    swatch: ["oklch(0.98 0 0)", "oklch(0.58 0.13 250)", "oklch(0.24 0.03 250)"],
+  },
+  {
+    key: "putih-hijau",
+    label: "Putih Hijau",
+    description: "Dasar putih segar dengan aksen hijau zamrud.",
+    swatch: ["oklch(0.98 0 0)", "oklch(0.58 0.13 168)", "oklch(0.24 0.03 168)"],
+  },
+  {
+    key: "putih-ungu",
+    label: "Putih Ungu",
+    description: "Dasar putih minimal dengan aksen ungu nebula.",
+    swatch: ["oklch(0.98 0 0)", "oklch(0.58 0.137 300)", "oklch(0.24 0.031 300)"],
+  },
+  {
+    key: "putih-koral",
+    label: "Putih Koral",
+    description: "Dasar putih lembut dengan aksen koral hangat.",
+    swatch: ["oklch(0.98 0 0)", "oklch(0.58 0.137 45)", "oklch(0.24 0.031 45)"],
+  },
+  {
+    key: "putih-hitam",
+    label: "Putih Monokrom",
+    description: "Putih bersih dengan aksen hitam abu, sangat minimal.",
+    swatch: ["oklch(0.98 0 0)", "oklch(0.45 0.02 255)", "oklch(0.15 0.01 255)"],
+  },
 ];
 
 export type FontOption = { key: string; label: string; note?: string };
