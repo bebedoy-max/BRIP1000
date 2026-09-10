@@ -112,6 +112,36 @@ export const themePresets: ThemePreset[] = [
     description: "Putih bersih dengan aksen hitam abu, sangat minimal.",
     swatch: ["oklch(0.98 0 0)", "oklch(0.45 0.02 255)", "oklch(0.15 0.01 255)"],
   },
+  {
+    key: "putih-tosca",
+    label: "Semi Putih Tosca",
+    description: "Putih kebiruan sejuk dengan aksen tosca dan kaca metalik.",
+    swatch: ["oklch(0.955 0.014 195)", "oklch(0.52 0.105 195)", "oklch(0.72 0.095 168)"],
+  },
+  {
+    key: "putih-emas",
+    label: "Semi Putih Emas",
+    description: "Putih gading hangat dengan kilau emas kekuningan.",
+    swatch: ["oklch(0.96 0.016 85)", "oklch(0.5 0.08 85)", "oklch(0.78 0.115 55)"],
+  },
+  {
+    key: "putih-rose",
+    label: "Semi Putih Rose",
+    description: "Putih merah muda lembut dengan aksen rose yang tegas.",
+    swatch: ["oklch(0.96 0.014 350)", "oklch(0.55 0.15 350)", "oklch(0.76 0.1 20)"],
+  },
+  {
+    key: "putih-indigo",
+    label: "Semi Putih Indigo",
+    description: "Putih keunguan dingin dengan aksen indigo pekat.",
+    swatch: ["oklch(0.95 0.016 275)", "oklch(0.46 0.15 275)", "oklch(0.7 0.11 240)"],
+  },
+  {
+    key: "putih-sage",
+    label: "Semi Putih Sage",
+    description: "Putih kehijauan tenang bernuansa sage alami.",
+    swatch: ["oklch(0.955 0.013 145)", "oklch(0.47 0.085 145)", "oklch(0.74 0.09 120)"],
+  },
 ];
 
 export type FontOption = { key: string; label: string; note?: string };

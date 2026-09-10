@@ -642,12 +642,22 @@ function Page() {
     save.mutate({ sectionId, pekerja, ...value });
   }
 
+  // Tutup tampilan absensi: kembali ke dialog unit kerja & keluar fullscreen.
+  function closeUker() {
+    setUker(null);
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }
+
   if (!uker)
     return (
       <UkerDialog
         onPick={(u) => {
           setStarted(false);
           setUker(u);
+          // Klik admin adalah user gesture, jadi bisa langsung minta fullscreen
+          // tanpa perlu menekan F11. Gagal (mis. iframe) diabaikan saja.
+          if (!document.fullscreenElement)
+            document.documentElement.requestFullscreen().catch(() => {});
         }}
       />
     );
@@ -671,7 +681,7 @@ function Page() {
       <div className="doa-root">
         <button
           type="button"
-          onClick={() => setUker(null)}
+          onClick={closeUker}
           className="doa-close"
           aria-label="Ganti unit kerja"
         >
@@ -693,7 +703,7 @@ function Page() {
       <div className="doa-root">
         <button
           type="button"
-          onClick={() => setUker(null)}
+          onClick={closeUker}
           className="doa-close"
           aria-label="Ganti unit kerja"
         >
@@ -740,7 +750,7 @@ function Page() {
         ))}
       </datalist>
 
-      <button type="button" onClick={() => setUker(null)} className="doa-close" aria-label="Ganti unit kerja">
+      <button type="button" onClick={closeUker} className="doa-close" aria-label="Ganti unit kerja">
         <X className="size-5" />
       </button>
 
