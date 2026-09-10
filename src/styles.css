@@ -1,17 +1,7 @@
+@import "./styles/nasalization.css";
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
-
-/* Font Nasalization (Typodermic Fonts) — dihosting sendiri di /public/fonts agar tetap ter-load di hosting mana pun. */
-@font-face {
-  font-family: "Nasalization";
-  src:
-    url("/fonts/Nasalization-Rg.woff2") format("woff2"),
-    url("/fonts/Nasalization-Rg.otf") format("opentype");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
 
 @custom-variant dark (&:is(.dark *));
 
@@ -2829,23 +2819,38 @@
    tema putih agar berlaku untuk semua variannya (termasuk tema baru nanti). */
 [data-theme^="putih-"] {
   --foreground: oklch(0.17 0.02 var(--th-h));
-  --card: oklch(1 0 0 / 76%);
+  --background: oklch(0.94 0.012 var(--th-h));
+  --card: oklch(0.97 0.014 var(--th-h) / 72%);
   --card-foreground: oklch(0.17 0.02 var(--th-h));
-  --popover: oklch(1 0 0 / 98%);
+  --popover: oklch(0.98 0.01 var(--th-h) / 96%);
   --popover-foreground: oklch(0.17 0.02 var(--th-h));
-  --secondary: oklch(0.9 0.02 var(--th-h));
+  --secondary: oklch(0.88 0.028 var(--th-h));
   --secondary-foreground: oklch(0.2 0.03 var(--th-h));
-  --muted: oklch(0.9 0.015 var(--th-h));
+  --muted: oklch(0.91 0.018 var(--th-h2));
   --muted-foreground: oklch(0.42 0.03 var(--th-h));
   --accent-foreground: oklch(0.17 0.02 var(--th-h));
-  --border: oklch(0.6 0.02 var(--th-h) / 42%);
-  --input: oklch(0.6 0.02 var(--th-h) / 38%);
-  --sidebar: oklch(0.97 0.008 var(--th-h) / 98%);
+  --border: oklch(0.54 0.045 var(--th-h) / 46%);
+  --input: oklch(0.56 0.04 var(--th-h2) / 42%);
+  --sidebar: oklch(0.93 0.018 var(--th-h) / 88%);
   --sidebar-foreground: oklch(0.17 0.02 var(--th-h));
-  --sidebar-accent: oklch(0.88 0.025 var(--th-h));
+  --sidebar-accent: oklch(0.86 0.035 var(--th-h2));
   --sidebar-accent-foreground: oklch(0.16 0.03 var(--th-h));
-  --sidebar-border: oklch(0.6 0.02 var(--th-h) / 38%);
-  --shadow-glass: 0 18px 40px -22px oklch(0.3 0.04 var(--th-h) / 35%);
+  --sidebar-border: oklch(0.52 0.045 var(--th-h) / 42%);
+  --gradient-page:
+    linear-gradient(118deg, transparent 0 24%, oklch(1 0 0 / 38%) 35%, transparent 49% 100%),
+    radial-gradient(1000px 620px at 5% -8%, oklch(0.78 0.075 var(--th-h) / 52%), transparent 63%),
+    radial-gradient(880px 580px at 98% 5%, oklch(0.8 0.065 var(--th-h2) / 45%), transparent 58%),
+    radial-gradient(900px 700px at 58% 112%, oklch(0.72 0.05 var(--th-h) / 35%), transparent 64%),
+    linear-gradient(145deg, oklch(0.96 0.012 var(--th-h)), oklch(0.9 0.022 var(--th-h2)));
+  --gradient-card: linear-gradient(
+    128deg,
+    oklch(1 0 0 / 88%) 0%,
+    oklch(0.91 0.028 var(--th-h) / 68%) 46%,
+    oklch(0.96 0.018 var(--th-h2) / 78%) 100%
+  );
+  --shadow-glass:
+    0 1px 1px oklch(1 0 0 / 75%) inset,
+    0 18px 42px -22px oklch(0.28 0.055 var(--th-h) / 42%);
 }
 /* Teks gradasi (judul) memakai warna gelap agar terbaca di atas dasar putih. */
 [data-theme^="putih-"] {
@@ -2861,10 +2866,46 @@
   );
 }
 [data-theme^="putih-"] .glass-card {
-  border-color: oklch(0 0 0 / 14%);
+  background-image:
+    linear-gradient(112deg, oklch(1 0 0 / 72%) 0%, transparent 28% 60%, oklch(1 0 0 / 28%) 76%, transparent 100%),
+    linear-gradient(145deg, oklch(0.99 0.01 var(--th-h) / 82%), oklch(0.88 0.035 var(--th-h2) / 62%));
+  border-color: oklch(0.5 0.055 var(--th-h) / 34%);
+  border-top-color: oklch(1 0 0 / 82%);
+  border-right-color: oklch(0.57 0.06 var(--th-h2) / 30%);
+  border-bottom-color: oklch(0.42 0.05 var(--th-h) / 36%);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 88%),
+    inset 1px 0 0 oklch(1 0 0 / 45%),
+    inset 0 -1px 0 oklch(0.42 0.05 var(--th-h) / 15%),
+    0 12px 28px -18px oklch(0.3 0.06 var(--th-h) / 38%),
+    0 30px 58px -32px oklch(0.38 0.05 var(--th-h2) / 34%);
+  backdrop-filter: blur(22px) saturate(145%);
+}
+[data-theme^="putih-"] .glass-card:nth-child(3n + 2) {
+  border-left-color: oklch(0.54 0.08 var(--th-h2) / 46%);
+  background-image:
+    linear-gradient(126deg, oklch(1 0 0 / 76%) 0%, transparent 34% 68%, oklch(0.76 0.055 var(--th-h2) / 22%) 100%),
+    linear-gradient(150deg, oklch(0.98 0.012 var(--th-h2) / 82%), oklch(0.89 0.035 var(--th-h) / 64%));
+}
+[data-theme^="putih-"] .glass-card:nth-child(3n) {
+  border-right-color: oklch(0.52 0.075 var(--th-h) / 48%);
+  border-bottom-color: oklch(0.48 0.055 var(--th-h2) / 38%);
+  background-image:
+    linear-gradient(104deg, oklch(1 0 0 / 7%) 0 20%, oklch(1 0 0 / 64%) 34%, transparent 52% 100%),
+    linear-gradient(138deg, oklch(0.96 0.02 var(--th-h) / 78%), oklch(0.87 0.042 var(--th-h2) / 62%));
 }
 [data-theme^="putih-"] .metal-item {
-  border-color: oklch(0 0 0 / 14%);
+  background-image: linear-gradient(
+    155deg,
+    oklch(0.98 0.012 var(--th-h) / 92%),
+    oklch(0.84 0.04 var(--th-h2) / 76%) 52%,
+    oklch(0.93 0.025 var(--th-h) / 88%)
+  );
+  border-color: oklch(0.48 0.055 var(--th-h) / 40%);
+  border-top-color: oklch(1 0 0 / 72%);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 72%),
+    0 8px 20px -15px oklch(0.3 0.06 var(--th-h) / 42%);
   color: oklch(0.17 0.02 var(--th-h));
 }
 [data-theme^="putih-"] .glass-card::after,
