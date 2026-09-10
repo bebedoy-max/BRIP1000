@@ -91,50 +91,62 @@ export function InfoBoard() {
         </div>
       </div>
 
-      <div key={current.id} className={`mt-3 ${anim}`}>
-        <h3 className="text-base font-semibold">{current.judul}</h3>
+      {/* Kolom statis dengan rasio 4:6 agar ukuran tidak berubah antar slide. */}
+      <div className="mt-3 aspect-[4/6] w-full overflow-hidden">
+        <div
+          key={current.id}
+          className={`flex h-full w-full flex-col ${anim}`}
+          style={{ animationDuration: `${Math.max(100, Number(current.transisi_ms) || 500)}ms` }}
+        >
+          <h3 className="shrink-0 text-base font-semibold">{current.judul}</h3>
 
-        {current.jenis === "image" && current.media_url ? (
-          <img
-            src={infoMediaSrc(current.media_url)}
-            alt={current.judul}
-            className="mt-3 max-h-[320px] w-full rounded-xl object-cover"
-            loading="lazy"
-          />
-        ) : null}
-
-        {current.jenis === "video" && current.media_url ? (
-          isEmbedVideo(current.media_url) || videoDriveId ? (
-            <iframe
-              key={current.media_url}
-              src={videoDriveId ? driveVideoEmbed(videoDriveId) : embedVideoSrc(current.media_url)}
-              title={current.judul}
-              allow="autoplay; encrypted-media; picture-in-picture"
-              allowFullScreen
-              className="mt-3 aspect-video w-full rounded-xl border-0"
-            />
-          ) : (
-            <video
-              ref={videoRef}
-              key={current.media_url}
+          {current.jenis === "image" && current.media_url ? (
+            <img
               src={infoMediaSrc(current.media_url)}
-              autoPlay
-              muted
-              playsInline
-              controls
-              onEnded={next}
-              onError={next}
-              className="mt-3 max-h-[320px] w-full rounded-xl bg-black object-contain"
+              alt={current.judul}
+              className="mt-3 min-h-0 w-full flex-1 rounded-xl object-contain"
+              loading="lazy"
             />
-          )
-        ) : null}
+          ) : null}
 
-        {current.isi ? (
-          <p className="mt-3 text-sm leading-relaxed whitespace-pre-line text-muted-foreground">
-            {current.isi}
-          </p>
-        ) : null}
+          {current.jenis === "video" && current.media_url ? (
+            isEmbedVideo(current.media_url) || videoDriveId ? (
+              <iframe
+                key={current.media_url}
+                src={videoDriveId ? driveVideoEmbed(videoDriveId) : embedVideoSrc(current.media_url)}
+                title={current.judul}
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+                className="mt-3 min-h-0 w-full flex-1 rounded-xl border-0"
+              />
+            ) : (
+              <video
+                ref={videoRef}
+                key={current.media_url}
+                src={infoMediaSrc(current.media_url)}
+                autoPlay
+                muted
+                playsInline
+                controls
+                onEnded={next}
+                onError={next}
+                className="mt-3 min-h-0 w-full flex-1 rounded-xl bg-black object-contain"
+              />
+            )
+          ) : null}
+
+          <div
+            className={`mt-3 min-h-0 overflow-y-auto ${current.jenis === "text" ? "flex-1" : "shrink-0 max-h-[30%]"}`}
+          >
+            {current.isi ? (
+              <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">
+                {current.isi}
+              </p>
+            ) : null}
+          </div>
+        </div>
       </div>
+
 
       <div className="mt-4 flex gap-1">
         {slides.map((s, i) => (

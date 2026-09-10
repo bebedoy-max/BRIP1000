@@ -32,6 +32,8 @@ export type InfoSlide = {
   media_url: string | null;
   durasi: number;
   transisi: InfoTransition;
+  /** Durasi efek transisi (milidetik). */
+  transisi_ms: number;
   aktif: boolean;
   urutan: number;
 };
@@ -41,11 +43,14 @@ export async function loadInfoSlidesAll(): Promise<InfoSlide[]> {
   try {
     const { data, error } = await db
       .from("info_board_slides")
-      .select("id,judul,jenis,isi,media_url,durasi,transisi,aktif,urutan")
+      .select("*")
       .order("urutan", { ascending: true })
       .order("created_at", { ascending: true });
     if (error) return [];
-    return (data ?? []) as InfoSlide[];
+    return ((data ?? []) as InfoSlide[]).map((s) => ({
+      ...s,
+      transisi_ms: Number(s.transisi_ms) > 0 ? Number(s.transisi_ms) : 500,
+    }));
   } catch {
     return [];
   }

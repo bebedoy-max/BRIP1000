@@ -5,7 +5,10 @@
 /* Font Nasalization (Typodermic Fonts) — dihosting sendiri di /public/fonts agar tetap ter-load di hosting mana pun. */
 @font-face {
   font-family: "Nasalization";
-  src: url("/fonts/Nasalization-Rg.otf") format("opentype");
+  src:
+    url("/fonts/Nasalization-Rg.otf") format("opentype"),
+    url("/__l5e/assets-v1/433afa50-b184-48a8-835a-f749aad81784/Nasalization-Rg.otf")
+      format("opentype");
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
@@ -1197,7 +1200,8 @@
 
 .doa-screen {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   scroll-snap-align: start;
   flex-direction: column;
   background: transparent;
@@ -1260,9 +1264,21 @@
 .doa-body {
   display: flex;
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scroll-behavior: smooth;
   flex-direction: column;
   gap: 0.5rem;
-  padding: 1rem 1.25rem 2rem;
+  padding: 0 1.25rem 2rem;
+}
+
+.doa-row-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  /* Menempel langsung di bawah header bagian, tanpa celah kosong. */
+  margin-bottom: 0.25rem;
+  background: var(--background);
 }
 
 .doa-row {
@@ -1274,7 +1290,8 @@
 }
 
 .doa-row-head {
-  padding-bottom: 0.25rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.5rem;
 }
 
 .doa-col-label {
@@ -1340,6 +1357,20 @@
   color: var(--foreground);
   font-size: clamp(0.8rem, 1.1vw, 1.05rem);
   outline: none;
+}
+
+/* Kehadiran tampil sebagai teks saja: tanpa kotak dan tanpa panah dropdown. */
+.doa-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  box-shadow: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.doa-select::-ms-expand {
+  display: none;
 }
 
 .doa-input::placeholder {
@@ -1523,4 +1554,185 @@
   border-color: var(--border);
   color: var(--secondary-foreground);
   box-shadow: none;
+}
+
+/* Layar "Absensi Selesai": tampilan besar, mewah, di tengah layar. */
+.doa-done {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5rem;
+  padding: 4vh 6vw;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      ellipse at 50% 0%,
+      color-mix(in oklab, var(--primary) 22%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse at 50% 110%,
+      color-mix(in oklab, var(--primary) 14%, transparent),
+      transparent 55%
+    );
+}
+
+.doa-done::before {
+  content: "";
+  position: absolute;
+  inset: -30% -10% auto -10%;
+  height: 70%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    color-mix(in oklab, var(--primary) 18%, transparent),
+    transparent 65%
+  );
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+.doa-done-inner {
+  position: relative;
+  z-index: 1;
+  width: min(1100px, 92vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  padding: clamp(2rem, 5vh, 4rem) clamp(1.5rem, 5vw, 4rem);
+  border-radius: 2rem;
+  border: 1px solid color-mix(in oklab, var(--primary) 30%, transparent);
+  background: color-mix(in oklab, var(--background) 65%, transparent);
+  backdrop-filter: blur(18px);
+  box-shadow:
+    0 40px 120px -40px color-mix(in oklab, var(--primary) 55%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 12%, transparent);
+  animation: doa-done-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes doa-done-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.doa-done-logo {
+  width: min(720px, 80%);
+  height: auto;
+  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.55));
+}
+
+.doa-done-rule {
+  width: min(420px, 70%);
+  height: 2px;
+  border: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--primary) 80%, transparent),
+    transparent
+  );
+}
+
+.doa-done-title {
+  font-size: clamp(2.4rem, 6vw, 5rem);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.05;
+  text-transform: uppercase;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--foreground) 96%, transparent),
+    color-mix(in oklab, var(--primary) 70%, var(--foreground))
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.doa-done-sub {
+  font-size: clamp(1rem, 1.8vw, 1.6rem);
+  color: color-mix(in oklab, var(--foreground) 78%, transparent);
+  max-width: 46ch;
+}
+
+.doa-done-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem 1rem;
+}
+
+.doa-done-chip {
+  padding: 0.6rem 1.4rem;
+  border-radius: 999px;
+  font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border: 1px solid color-mix(in oklab, var(--primary) 40%, transparent);
+  background: color-mix(in oklab, var(--primary) 14%, transparent);
+  color: color-mix(in oklab, var(--foreground) 92%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doa-done-inner {
+    animation: none;
+  }
+}
+
+
+/* Tombol pil "Enter" pada layar pembuka absensi. */
+.doa-enter-pill {
+  margin-top: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1.6rem 0.9rem 1rem;
+  border-radius: 999px;
+  cursor: pointer;
+  border: 1px solid color-mix(in oklab, var(--primary) 45%, transparent);
+  background: color-mix(in oklab, var(--primary) 16%, transparent);
+  color: color-mix(in oklab, var(--foreground) 92%, transparent);
+  box-shadow: 0 18px 50px -20px color-mix(in oklab, var(--primary) 70%, transparent);
+  transition: transform 0.2s ease, background 0.2s ease;
+  animation: doa-enter-pulse 2.2s ease-in-out infinite;
+}
+
+.doa-enter-pill:hover {
+  transform: translateY(-2px);
+  background: color-mix(in oklab, var(--primary) 26%, transparent);
+}
+
+.doa-enter-key {
+  padding: 0.35rem 1rem;
+  border-radius: 999px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: clamp(0.85rem, 1.2vw, 1.05rem);
+  background: color-mix(in oklab, var(--primary) 75%, transparent);
+  color: var(--primary-foreground);
+}
+
+.doa-enter-text {
+  font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+  letter-spacing: 0.02em;
+}
+
+@keyframes doa-enter-pulse {
+  0%, 100% { box-shadow: 0 18px 50px -20px color-mix(in oklab, var(--primary) 70%, transparent); }
+  50% { box-shadow: 0 22px 70px -18px color-mix(in oklab, var(--primary) 95%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doa-enter-pill { animation: none; }
 }

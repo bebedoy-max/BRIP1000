@@ -221,7 +221,7 @@ function SectionScreen({
         {section.pekerja.length ? (
           section.pekerja.map((nama, row) => {
             const key = recordKey(section.id, nama, today);
-            const cell = draft[key] ?? { qris: "", kehadiran: "Belum Hadir" };
+            const cell = draft[key] ?? { qris: "", kehadiran: "" };
             const idx = inputIndexOf(section.id, row);
             return (
               <div key={nama} className={`doa-row${solo ? " doa-row-solo" : ""}`}>
@@ -250,7 +250,10 @@ function SectionScreen({
                     list="doa-qris-list"
                     placeholder="nama merchant qris"
                     onChange={(e) => onChangeQris(nama, e.target.value)}
-                    onBlur={() => onCommit(nama)}
+                    onBlur={() => {
+                      if (cell.qris.trim()) onCommit(nama);
+                    }}
+
                     onKeyDown={(e) => {
                       if (e.key !== "Enter") return;
                       e.preventDefault();
@@ -266,6 +269,12 @@ function SectionScreen({
                     onChange={(e) => onChangeKehadiran(nama, e.target.value)}
                     className="doa-select"
                   >
+                    <option value=""></option>
+                    {/* Nilai tersimpan yang belum ada di daftar tetap bisa tampil. */}
+                    {cell.kehadiran &&
+                    !options.some((o) => o.label === cell.kehadiran) ? (
+                      <option value={cell.kehadiran}>{cell.kehadiran}</option>
+                    ) : null}
                     {options.map((o) => (
                       <option key={o.label} value={o.label}>
                         {o.label}
@@ -300,6 +309,28 @@ function SaveDialog({
   onYes: () => void;
   onNo: () => void;
 }) {
+  const yesRef = useRef<HTMLButtonElement>(null);
+
+  // Fokus otomatis ke tombol Yes agar Enter langsung menyimpan.
+  useEffect(() => {
+    const t = window.setTimeout(() => yesRef.current?.focus(), 50);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (!pending) onYes();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        onNo();
+      }
+    }
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [pending, onYes, onNo]);
+
   return (
     <div className="doa-modal-backdrop">
       <div className="doa-modal">
@@ -308,7 +339,13 @@ function SaveDialog({
           {ukerNama} {tanggal}
         </p>
         <div className="doa-modal-actions">
-          <button type="button" className="doa-save-btn" onClick={onYes} disabled={pending}>
+          <button
+            ref={yesRef}
+            type="button"
+            className="doa-save-btn"
+            onClick={onYes}
+            disabled={pending}
+          >
             {pending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             Yes
           </button>
@@ -320,6 +357,61 @@ function SaveDialog({
     </div>
   );
 }
+
+/** Tanggal ISO menjadi teks panjang bahasa Indonesia. */
+function longDate(iso: string) {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+/** Layar pembuka absensi: tekan Enter untuk mulai. */
+function OpeningScreen({
+  logoUrl,
+  ukerNama,
+  tanggal,
+  onStart,
+}: {
+  logoUrl: string;
+  ukerNama: string;
+  tanggal: string;
+  onStart: () => void;
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      onStart();
+    }
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [onStart]);
+
+  return (
+    <div className="doa-done">
+      <div className="doa-done-inner">
+        <img src={logoUrl} alt="Branch Office Pringsewu" className="doa-done-logo" />
+        <hr className="doa-done-rule" />
+        <h1 className="doa-done-title">Absensi, Doa & Briefing Pagi</h1>
+        <p className="doa-done-sub">
+          Selamat pagi. Siapkan absensi doa & briefing pagi untuk hari ini.
+        </p>
+        <div className="doa-done-meta">
+          <span className="doa-done-chip">{ukerNama}</span>
+          <span className="doa-done-chip">{tanggal}</span>
+        </div>
+        <button type="button" className="doa-enter-pill" onClick={onStart}>
+          <span className="doa-enter-key">Enter</span>
+          <span className="doa-enter-text">tekan Enter untuk mulai absensi</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 
 function Page() {
   const [uker, setUker] = useState<{ id: string; nama: string } | null>(null);
@@ -355,7 +447,10 @@ function Page() {
   const [term, setTerm] = useState("");
   const [askSave, setAskSave] = useState(false);
   const [locked, setLocked] = useState(false);
+  // Opening screen: absensi baru dibuka setelah admin menekan Enter.
+  const [started, setStarted] = useState(false);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
+
 
   const sections: DoaPagiSection[] = useMemo(
     () => (board.data?.sections ?? []).slice().sort((a, b) => a.urutan - b.urutan),
@@ -389,7 +484,7 @@ function Page() {
     for (const s of board.data.sections as DoaPagiSection[])
       for (const p of s.pekerja) {
         const k = recordKey(s.id, p, today);
-        if (!next[k]) next[k] = { qris: "", kehadiran: "Belum Hadir" };
+        if (!next[k]) next[k] = { qris: "", kehadiran: "" };
       }
     setDraft(next);
     setCommitted(next);
@@ -405,7 +500,7 @@ function Page() {
     mutationFn: () => {
       const rows = sections.flatMap((s) =>
         s.pekerja.map((p) => {
-          const cur = draft[recordKey(s.id, p, today)] ?? { qris: "", kehadiran: "Belum Hadir" };
+          const cur = draft[recordKey(s.id, p, today)] ?? { qris: "", kehadiran: "" };
           return {
             sectionId: s.id,
             pekerja: p,
@@ -439,12 +534,14 @@ function Page() {
   /** Urutan fokus input QRIS: baris per bagian, lanjut ke bagian berikutnya. */
   const offsets = useMemo(() => {
     const map: Record<string, number> = {};
+    const owner: string[] = [];
     let n = 0;
     for (const s of sections) {
       map[s.id] = n;
+      for (let i = 0; i < s.pekerja.length; i++) owner.push(s.id);
       n += s.pekerja.length;
     }
-    return { map, total: n };
+    return { map, owner, total: n };
   }, [sections]);
 
   function updateCell(
@@ -454,27 +551,38 @@ function Page() {
   ) {
     setDraft((d) => {
       const k = recordKey(sectionId, pekerja, today);
-      const cur = d[k] ?? { qris: "", kehadiran: "Belum Hadir" };
+      const cur = d[k] ?? { qris: "", kehadiran: "" };
       return { ...d, [k]: { ...cur, ...patch } };
     });
   }
 
+  /** Rapikan ketikan manual: setiap kata diawali huruf kapital. */
+  function titleCase(s: string) {
+    return s
+      .trim()
+      .replace(/\s+/g, " ")
+      .replace(
+        /\S+/g,
+        (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(),
+      );
+  }
+
   function commit(sectionId: string, pekerja: string) {
     const k = recordKey(sectionId, pekerja, today);
-    const cur = draft[k];
-    if (!cur) return;
+    const cur = draft[k] ?? { qris: "", kehadiran: "" };
     const code = matchKehadiran(cur.qris, options);
-    const value = code
-      ? { qris: QRIS_KOSONG, kehadiran: code }
-      : {
-          qris: cur.qris.trim(),
-          kehadiran: isQrisFilled(cur.qris)
-            ? cur.kehadiran === "Belum Hadir"
-              ? "Hadir"
-              : cur.kehadiran
-            : cur.kehadiran,
-        };
+    // Enter pada kolom QRIS kosong: tandai "Kosong" + "Hadir" (bulatan silang).
+    const value = !cur.qris.trim()
+      ? { qris: QRIS_KOSONG, kehadiran: "Hadir" }
+      : code
+        ? { qris: QRIS_KOSONG, kehadiran: code }
+        : {
+            qris: titleCase(cur.qris),
+            // Ada absen QRIS -> kehadiran selalu "Hadir".
+            kehadiran: isQrisFilled(cur.qris) ? "Hadir" : cur.kehadiran,
+          };
     updateCell(sectionId, pekerja, value);
+
     const k2 = recordKey(sectionId, pekerja, today);
     setCommitted((c) => ({ ...c, [k2]: value }));
     setAnimKey(k2);
@@ -482,9 +590,19 @@ function Page() {
     save.mutate({ sectionId, pekerja, ...value });
   }
 
-  if (!uker) return <UkerDialog onPick={setUker} />;
+  if (!uker)
+    return (
+      <UkerDialog
+        onPick={(u) => {
+          setStarted(false);
+          setUker(u);
+        }}
+      />
+    );
 
-  if (locked)
+
+  // Opening screen selalu tampil lebih dulu, sebelum layar selesai absensi.
+  if (!started)
     return (
       <div className="doa-root">
         <button
@@ -495,14 +613,53 @@ function Page() {
         >
           <X className="size-5" />
         </button>
-        <div className="doa-screen items-center justify-center">
-          <p className="doa-modal-title text-center">Absensi Selesai</p>
-          <p className="mt-2 text-center text-white/80">
-            Absen hari ini {today} sudah selesai untuk {uker.nama}.
-          </p>
+        <OpeningScreen
+          logoUrl={logos.bo.url ?? logoBo}
+          ukerNama={uker.nama}
+          tanggal={longDate(today)}
+          onStart={() => setStarted(true)}
+        />
+      </div>
+    );
+
+  if (locked) {
+    const tanggalPanjang = longDate(today);
+    return (
+
+      <div className="doa-root">
+        <button
+          type="button"
+          onClick={() => setUker(null)}
+          className="doa-close"
+          aria-label="Ganti unit kerja"
+        >
+          <X className="size-5" />
+        </button>
+        <div className="doa-done">
+          <div className="doa-done-inner">
+            <img
+              src={logos.bo.url ?? logoBo}
+              alt="Branch Office Pringsewu"
+              className="doa-done-logo"
+            />
+            <hr className="doa-done-rule" />
+            <h1 className="doa-done-title">Absensi Selesai</h1>
+            <p className="doa-done-sub">
+              Absensi, doa & briefing pagi hari ini telah selesai dan tersimpan.
+            </p>
+            <div className="doa-done-meta">
+              <span className="doa-done-chip">{uker.nama}</span>
+              <span className="doa-done-chip">{tanggalPanjang}</span>
+            </div>
+          </div>
         </div>
       </div>
     );
+  }
+
+
+
+
 
   return (
     <div className="doa-root">
@@ -551,14 +708,30 @@ function Page() {
             }}
             focusNext={(idx) => {
               const next = inputs.current[idx + 1];
-              if (next) {
-                next.focus();
-                next.select();
-                next.scrollIntoView({ block: "center", behavior: "smooth" });
+              if (!next) {
+                // Baris terakhir: tampilkan konfirmasi simpan absensi.
+                window.setTimeout(() => setAskSave(true), 1200);
                 return;
               }
-              // Baris terakhir: tampilkan konfirmasi simpan absensi.
-              setAskSave(true);
+              const sameSection = offsets.owner[idx] === offsets.owner[idx + 1];
+              const go = () => {
+                next.focus();
+                next.select();
+                // Hanya isi bagian yang bergulir; header bagian tetap diam.
+                next.scrollIntoView({ block: "center", behavior: "smooth" });
+              };
+              if (sameSection) {
+                go();
+                return;
+              }
+              // Jeda agar baris terakhir bagian ini sempat terlihat dulu.
+              window.setTimeout(() => {
+                next.closest(".doa-screen")?.scrollIntoView({
+                  block: "start",
+                  behavior: "smooth",
+                });
+                window.setTimeout(go, 500);
+              }, 1200);
             }}
           />
         ))

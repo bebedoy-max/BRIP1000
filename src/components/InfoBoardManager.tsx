@@ -31,6 +31,7 @@ type Form = {
   media_url: string;
   durasi: number;
   transisi: InfoTransition;
+  transisi_ms: number;
   aktif: boolean;
   urutan: number;
 };
@@ -42,6 +43,7 @@ const emptyForm: Form = {
   media_url: "",
   durasi: 8,
   transisi: "fade",
+  transisi_ms: 500,
   aktif: true,
   urutan: 1,
 };
@@ -49,29 +51,49 @@ const emptyForm: Form = {
 const selectClass =
   "h-10 w-full rounded-xl border border-input bg-popover px-3 text-sm";
 
-const CHUNK_SIZE = 8 * 1024 * 1024; // 8 MB (kelipatan 256 KB sesuai aturan Google)
+const CHUNK_SIZE = 4 * 1024 * 1024; // 4 MB (kelipatan 256 KB sesuai aturan Google)
 const MAX_RETRY = 4;
+const PROXY_URL = "/api/info-media/upload";
 
 function delay(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/** Token sesi login, dipakai untuk mengamankan jalur unggah di server. */
+async function authToken() {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("Sesi login berakhir. Silakan masuk ulang.");
+  return token;
+}
+
+/** Kirim satu potongan (atau tanya posisi byte) lewat server aplikasi. */
+async function proxyPut(opts: {
+  token: string;
+  uploadUrl: string;
+  range: string;
+  fileType?: string;
+  body?: Blob | null;
+}) {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${opts.token}`,
+    "x-upload-url": opts.uploadUrl,
+    "x-content-range": opts.range,
+    "content-type": "application/octet-stream",
+  };
+  if (opts.fileType) headers["x-file-type"] = opts.fileType;
+  return fetch(PROXY_URL, { method: "PUT", headers, body: opts.body ?? null });
+}
+
 /** Tanya Google sudah sampai byte berapa upload diterima (untuk lanjut ulang). */
-async function queryUploadedBytes(uploadUrl: string, total: number): Promise<number> {
-  const res = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Range": `bytes */${total}` },
-  });
-  if (res.status === 308) {
-    const range = res.headers.get("range"); // contoh: bytes=0-12345
-    const m = range?.match(/bytes=0-(\d+)/);
-    return m ? Number(m[1]) + 1 : 0;
-  }
-  return 0;
+async function queryUploadedBytes(token: string, uploadUrl: string, total: number) {
+  const res = await proxyPut({ token, uploadUrl, range: `bytes */${total}` });
+  const m = res.headers.get("x-google-range")?.match(/bytes=0-(\d+)/);
+  return m ? Number(m[1]) + 1 : 0;
 }
 
 /**
- * Unggah resumable per potongan (chunk) langsung ke Google Drive dengan
+ * Unggah resumable per potongan (chunk) melalui server aplikasi, dengan
  * percobaan ulang otomatis — tahan terhadap koneksi yang putus di tengah
  * untuk file video besar.
  */
@@ -80,21 +102,23 @@ async function resumableUpload(
   file: File,
   onProgress: (pct: number) => void,
 ): Promise<{ id: string }> {
+  const token = await authToken();
   const total = file.size;
   let offset = 0;
   let attempt = 0;
 
   while (offset < total) {
     const end = Math.min(offset + CHUNK_SIZE, total);
-    const chunk = file.slice(offset, end);
     const last = end === total;
     try {
-      const res = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Range": `bytes ${offset}-${end - 1}/${total}` },
-        body: chunk,
+      const res = await proxyPut({
+        token,
+        uploadUrl,
+        range: `bytes ${offset}-${end - 1}/${total}`,
+        fileType: file.type,
+        body: file.slice(offset, end),
       });
-      if (res.status === 308) {
+      if (res.status === 208) {
         // Potongan diterima, lanjut potongan berikutnya.
         offset = end;
         attempt = 0;
@@ -103,14 +127,13 @@ async function resumableUpload(
       }
       if (res.ok) {
         if (!last) {
-          // Seharusnya tidak terjadi, tapi anggap potongan diterima.
           offset = end;
           attempt = 0;
           onProgress(Math.round((offset / total) * 100));
           continue;
         }
         onProgress(100);
-        return (await res.json()) as { id: string };
+        return JSON.parse(await res.text()) as { id: string };
       }
       if (res.status >= 500 || res.status === 429) throw new Error(`server ${res.status}`);
       const body = await res.text();
@@ -123,13 +146,13 @@ async function resumableUpload(
         throw new Error("Koneksi terputus saat mengunggah. Coba lagi dengan koneksi stabil.");
       }
       await delay(1000 * attempt);
-      // Sinkronkan posisi byte yang sudah diterima Google sebelum lanjut.
-      offset = await queryUploadedBytes(uploadUrl, total);
+      offset = await queryUploadedBytes(token, uploadUrl, total);
       onProgress(Math.round((offset / total) * 100));
     }
   }
   throw new Error("Unggahan selesai tanpa respons dari Google.");
 }
+
 
 /** Pengelolaan konten papan informasi digital pada dashboard. */
 export function InfoBoardManager({ canWrite }: { canWrite: boolean }) {
@@ -197,6 +220,7 @@ export function InfoBoardManager({ canWrite }: { canWrite: boolean }) {
         media_url: form.media_url.trim() || null,
         durasi: Math.max(2, Math.min(600, Number(form.durasi) || 8)),
         transisi: form.transisi,
+        transisi_ms: Math.max(100, Math.min(5000, Number(form.transisi_ms) || 500)),
         aktif: form.aktif,
         urutan: Number(form.urutan) || 1,
       };
@@ -234,6 +258,7 @@ export function InfoBoardManager({ canWrite }: { canWrite: boolean }) {
       media_url: s.media_url ?? "",
       durasi: s.durasi,
       transisi: s.transisi,
+      transisi_ms: s.transisi_ms ?? 500,
       aktif: s.aktif,
       urutan: s.urutan,
     });
@@ -298,6 +323,23 @@ export function InfoBoardManager({ canWrite }: { canWrite: boolean }) {
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="transisi-ms">Durasi Efek Transisi (milidetik)</Label>
+            <Input
+              id="transisi-ms"
+              type="number"
+              min={100}
+              max={5000}
+              step={50}
+              value={form.transisi_ms}
+              disabled={!canWrite}
+              onChange={(e) => setForm((f) => ({ ...f, transisi_ms: Number(e.target.value) }))}
+            />
+            <p className="text-xs text-muted-foreground">
+              Kecepatan animasi saat berpindah slide. 500 ms = 0,5 detik.
+            </p>
           </div>
 
           {form.jenis !== "text" ? (
@@ -439,7 +481,8 @@ export function InfoBoardManager({ canWrite }: { canWrite: boolean }) {
                 <span className="min-w-0 flex-1 truncate font-medium">{s.judul}</span>
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {infoKinds.find((k) => k.value === s.jenis)?.label} ·{" "}
-                  {infoTransitions.find((t) => t.value === s.transisi)?.label} · {s.durasi}s
+                  {infoTransitions.find((t) => t.value === s.transisi)?.label} ({s.transisi_ms ?? 500}
+                  ms) · {s.durasi}s
                 </span>
                 <span
                   className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${

@@ -88,41 +88,25 @@ export function InfographicStats({ items }: { items: InfographicStat[] }) {
                   params={{ key: s.detailKey }}
                   search={{ from: "/" }}
                   aria-label={`Lihat detail ${s.label}`}
-                  className={`group relative flex items-center gap-3 rounded-full border border-primary/30 border-t-primary/50 border-b-background/70 bg-gradient-to-b from-card/90 via-card/70 to-background/80 py-2.5 pl-6 backdrop-blur-xl transition-all duration-300 [box-shadow:inset_0_1px_0_color-mix(in_oklab,var(--primary)_35%,transparent),inset_0_-2px_6px_color-mix(in_oklab,black_45%,transparent),0_6px_14px_-6px_color-mix(in_oklab,black_75%,transparent),0_2px_0_color-mix(in_oklab,var(--primary)_18%,transparent)] hover:-translate-y-1 hover:border-primary/60 hover:[box-shadow:inset_0_1px_0_color-mix(in_oklab,var(--primary)_55%,transparent),inset_0_-2px_8px_color-mix(in_oklab,black_45%,transparent),0_14px_26px_-10px_color-mix(in_oklab,var(--primary)_70%,transparent)] active:translate-y-0 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-                    right ? "pr-14" : "pr-3"
-                  }`}
+                  className="group relative flex w-full items-center gap-2.5 rounded-[999px] border border-primary/30 border-t-primary/50 border-b-background/70 bg-gradient-to-b from-card/90 via-card/70 to-background/80 px-3 py-2 backdrop-blur-xl transition-all duration-300 [box-shadow:inset_0_1px_0_color-mix(in_oklab,var(--primary)_35%,transparent),inset_0_-2px_6px_color-mix(in_oklab,black_45%,transparent),0_6px_14px_-6px_color-mix(in_oklab,black_75%,transparent),0_2px_0_color-mix(in_oklab,var(--primary)_18%,transparent)] hover:-translate-y-1 hover:border-primary/60 hover:[box-shadow:inset_0_1px_0_color-mix(in_oklab,var(--primary)_55%,transparent),inset_0_-2px_8px_color-mix(in_oklab,black_45%,transparent),0_14px_26px_-10px_color-mix(in_oklab,var(--primary)_70%,transparent)] active:translate-y-0 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
                   <span
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-x-3 top-0.5 h-1/2 rounded-full bg-gradient-to-b from-primary-foreground/20 to-transparent opacity-60"
                   />
-                  <span
-                    className={`absolute top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full text-[10px] font-black text-primary-foreground tabular-nums transition-transform duration-300 group-hover:scale-110 ${
-                      right ? "-left-4 sm:-right-4 sm:left-auto" : "-left-4"
-                    }`}
-                    style={{
-                      backgroundImage: "var(--gradient-stat)",
-                      boxShadow:
-                        "var(--shadow-glow), inset 0 1px 1px color-mix(in oklab, white 45%, transparent), inset 0 -2px 4px color-mix(in oklab, black 40%, transparent)",
-                    }}
-                  >
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
 
-                  <span className="relative ml-3 grid size-10 shrink-0 place-items-center rounded-full border border-primary/40 bg-gradient-to-b from-primary/25 to-primary/5 [box-shadow:inset_0_1px_1px_color-mix(in_oklab,white_25%,transparent)]">
-                    <s.icon className="size-6 text-accent" />
+                  <span className="relative grid size-9 shrink-0 place-items-center rounded-full border border-primary/40 bg-gradient-to-b from-primary/25 to-primary/5 [box-shadow:inset_0_1px_1px_color-mix(in_oklab,white_25%,transparent)]">
+                    <s.icon className="size-5 text-accent" />
                   </span>
 
                   <span className="relative min-w-0 flex-1">
-                    <span className="block truncate text-[10px] font-extrabold tracking-[0.16em] text-foreground/85 uppercase drop-shadow-[0_1px_0_color-mix(in_oklab,black_60%,transparent)] sm:text-[11px]">
+                    <span className="block text-[9px] leading-tight font-extrabold tracking-[0.08em] break-words text-foreground/85 uppercase drop-shadow-[0_1px_0_color-mix(in_oklab,black_60%,transparent)] sm:text-[10px]">
                       {s.label}
                     </span>
-                    <span className="block text-lg leading-tight font-black tabular-nums drop-shadow-[0_1px_1px_color-mix(in_oklab,black_65%,transparent)]">
+                    <span className="block text-base leading-tight font-black tabular-nums drop-shadow-[0_1px_1px_color-mix(in_oklab,black_65%,transparent)] sm:text-lg">
                       {s.value}
                     </span>
                   </span>
-
-
                 </Link>
               </li>
             );

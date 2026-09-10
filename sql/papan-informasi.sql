@@ -34,3 +34,7 @@ CREATE POLICY "info_board_slides admin write" ON public.info_board_slides FOR AL
 DROP TRIGGER IF EXISTS info_board_slides_updated ON public.info_board_slides;
 CREATE TRIGGER info_board_slides_updated BEFORE UPDATE ON public.info_board_slides
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- Durasi efek transisi antar slide (milidetik).
+ALTER TABLE public.info_board_slides
+  ADD COLUMN IF NOT EXISTS transisi_ms integer NOT NULL DEFAULT 500;
