@@ -1818,6 +1818,7 @@
 @media (prefers-reduced-motion: reduce) {
   .doa-enter-pill { animation: none; }
 }
+<<<<<<< HEAD
 
 /* ================= Pengaturan Tampilan: Tema Warna ================= */
 /* Tema diterapkan lewat atribut data-theme pada <html>. Semua warna aplikasi
@@ -2088,3 +2089,5 @@ html[data-font] {
 [data-font="dunkin"] { --app-font: "Dunkin", ui-sans-serif, system-ui, sans-serif; }
 [data-font="dream-orphans"] { --app-font: "Dream Orphans", ui-sans-serif, system-ui, sans-serif; }
 [data-font="long-shot"] { --app-font: "Long Shot", ui-sans-serif, system-ui, sans-serif; }
+=======
+>>>>>>> e630f05a39044753b81252623f99b1c8a1266853
