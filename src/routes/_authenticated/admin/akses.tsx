@@ -1,4 +1,4 @@
-import { Fragment, useEffect } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -6,7 +6,15 @@ import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { AdminPage } from "@/components/AdminLayout";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRoles } from "@/lib/roles";
 import {
@@ -80,12 +88,20 @@ function TampilanTab() {
   const theme = appearance.data?.theme_key ?? DEFAULT_THEME;
   const font = appearance.data?.font_key ?? DEFAULT_FONT;
 
-  // Muat semua font agar setiap kartu langsung tampil dengan huruf aslinya.
+  // Pilihan yang sedang dilihat pada dropdown (pratinjau sebelum disimpan).
+  const [themePick, setThemePick] = useState(theme);
+  const [fontPick, setFontPick] = useState(font);
+  useEffect(() => setThemePick(theme), [theme]);
+  useEffect(() => setFontPick(font), [font]);
+
+  // Muat semua font agar pratinjau langsung tampil dengan huruf aslinya.
   useEffect(() => {
     if (typeof document === "undefined" || !document.fonts) return;
     for (const f of fontOptions) void document.fonts.load(`24px "${f.label}"`).catch(() => {});
   }, []);
 
+  const themeInfo = themePresets.find((t) => t.key === themePick) ?? themePresets[0]!;
+  const fontInfo = fontOptions.find((f) => f.key === fontPick) ?? fontOptions[0]!;
 
   function pilih(v: { theme_key?: string; font_key?: string }) {
     if (!isSuperadmin) return;
@@ -106,39 +122,78 @@ function TampilanTab() {
       <section>
         <h2 className="text-lg font-semibold">Tema Warna</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Tema mengubah warna seluruh halaman. Menu atau halaman baru yang ditambahkan nanti
-          otomatis mengikuti tema yang dipilih di sini.
+          Pilih tema pada daftar, lihat pratinjaunya di sebelah kanan, lalu terapkan. Menu atau
+          halaman baru di masa depan otomatis mengikuti tema yang dipilih di sini.
         </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {themePresets.map((t) => {
-            const active = t.key === theme;
-            return (
-              <button
-                key={t.key}
-                type="button"
-                disabled={!isSuperadmin || save.isPending}
-                onClick={() => pilih({ theme_key: t.key })}
-                className={`glass-card p-4 text-left transition-transform hover:scale-[1.01] disabled:opacity-60 ${
-                  active ? "ring-2 ring-primary" : ""
-                }`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-semibold">{t.label}</span>
-                  {active ? <Check className="size-4 text-primary" /> : null}
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">{t.description}</p>
-                <div className="mt-3 flex gap-2">
-                  {t.swatch.map((c) => (
-                    <span
-                      key={c}
-                      className="size-7 rounded-full border border-border/60"
-                      style={{ background: c }}
-                    />
-                  ))}
-                </div>
-              </button>
-            );
-          })}
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,20rem)_1fr]">
+          <div className="space-y-3">
+            <Select value={themePick} onValueChange={setThemePick}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Pilih tema warna" />
+              </SelectTrigger>
+              <SelectContent>
+                {themePresets.map((t) => (
+                  <SelectItem key={t.key} value={t.key}>
+                    <span className="flex items-center gap-2">
+                      <span className="flex gap-1">
+                        {t.swatch.map((c) => (
+                          <span
+                            key={c}
+                            className="size-3 rounded-full border border-border/60"
+                            style={{ background: c }}
+                          />
+                        ))}
+                      </span>
+                      {t.label}
+                      {t.key === theme ? " · aktif" : ""}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              className="w-full"
+              disabled={!isSuperadmin || save.isPending || themePick === theme}
+              onClick={() => pilih({ theme_key: themePick })}
+            >
+              {themePick === theme ? (
+                <>
+                  <Check className="size-4" /> Tema aktif
+                </>
+              ) : (
+                "Terapkan Tema"
+              )}
+            </Button>
+          </div>
+
+          <div className="glass-card p-5" data-theme={themePick}>
+            <div className="flex items-center justify-between gap-3">
+              <span className="gradient-text text-lg font-semibold">{themeInfo.label}</span>
+              {themePick === theme ? <Check className="size-4 text-primary" /> : null}
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">{themeInfo.description}</p>
+            <div className="mt-4 flex gap-2">
+              {themeInfo.swatch.map((c) => (
+                <span
+                  key={c}
+                  className="size-9 rounded-full border border-border/60"
+                  style={{ background: c }}
+                />
+              ))}
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="metal-item rounded-xl p-3">
+                <p className="text-xs tracking-wide text-muted-foreground uppercase">Contoh Kartu</p>
+                <p className="text-xl font-bold">1.234</p>
+              </div>
+              <div className="flex flex-col justify-center gap-2 rounded-xl border border-border/60 p-3">
+                <Button size="sm" className="w-fit">
+                  Tombol Utama
+                </Button>
+                <span className="text-sm text-muted-foreground">Teks pendukung</span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -147,32 +202,55 @@ function TampilanTab() {
         <p className="mt-1 text-sm text-muted-foreground">
           Semua font dihosting sendiri sehingga tetap tampil di hosting mana pun.
         </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {fontOptions.map((f) => {
-            const active = f.key === font;
-            return (
-              <button
-                key={f.key}
-                type="button"
-                disabled={!isSuperadmin || save.isPending}
-                onClick={() => pilih({ font_key: f.key })}
-                className={`glass-card p-4 text-left transition-transform hover:scale-[1.01] disabled:opacity-60 ${
-                  active ? "ring-2 ring-primary" : ""
-                }`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs tracking-wide text-muted-foreground uppercase">
-                    {f.label}
-                    {f.note ? ` · ${f.note}` : ""}
-                  </span>
-                  {active ? <Check className="size-4 text-primary" /> : null}
-                </div>
-                <p className="mt-2 truncate text-2xl" data-font={f.key} data-font-preview="">
-                  BRI BO Pringsewu 123
-                </p>
-              </button>
-            );
-          })}
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,20rem)_1fr]">
+          <div className="space-y-3">
+            <Select value={fontPick} onValueChange={setFontPick}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Pilih font" />
+              </SelectTrigger>
+              <SelectContent className="max-h-80">
+                {fontOptions.map((f) => (
+                  <SelectItem key={f.key} value={f.key}>
+                    <span data-font={f.key} data-font-preview="">
+                      {f.label}
+                    </span>
+                    {f.key === font ? (
+                      <span className="text-xs text-muted-foreground"> · aktif</span>
+                    ) : null}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              className="w-full"
+              disabled={!isSuperadmin || save.isPending || fontPick === font}
+              onClick={() => pilih({ font_key: fontPick })}
+            >
+              {fontPick === font ? (
+                <>
+                  <Check className="size-4" /> Font aktif
+                </>
+              ) : (
+                "Terapkan Font"
+              )}
+            </Button>
+          </div>
+
+          <div className="glass-card p-5">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs tracking-wide text-muted-foreground uppercase">
+                {fontInfo.label}
+                {fontInfo.note ? ` · ${fontInfo.note}` : ""}
+              </span>
+              {fontPick === font ? <Check className="size-4 text-primary" /> : null}
+            </div>
+            <div data-font={fontPick} data-font-preview="" className="mt-3 space-y-2">
+              <p className="text-3xl leading-tight">BRI BO Pringsewu</p>
+              <p className="text-xl">ABCDEFGHIJKLMNOPQRSTUVWXYZ</p>
+              <p className="text-xl">abcdefghijklmnopqrstuvwxyz</p>
+              <p className="text-xl">0123456789 . , ? ! &amp; @ #</p>
+            </div>
+          </div>
         </div>
       </section>
     </div>

@@ -2263,6 +2263,54 @@
     0 0 36px oklch(0.78 0.06 var(--th-h2) / 12%);
 }
 
+/* Keterbacaan tema putih: teks lebih pekat, garis & kartu lebih tegas
+   sehingga tidak terlihat pucat. Blok ini sengaja diletakkan setelah tiap
+   tema putih agar berlaku untuk semua variannya (termasuk tema baru nanti). */
+[data-theme^="putih-"] {
+  --foreground: oklch(0.17 0.02 var(--th-h));
+  --card: oklch(1 0 0 / 96%);
+  --card-foreground: oklch(0.17 0.02 var(--th-h));
+  --popover: oklch(1 0 0 / 98%);
+  --popover-foreground: oklch(0.17 0.02 var(--th-h));
+  --secondary: oklch(0.9 0.02 var(--th-h));
+  --secondary-foreground: oklch(0.2 0.03 var(--th-h));
+  --muted: oklch(0.9 0.015 var(--th-h));
+  --muted-foreground: oklch(0.42 0.03 var(--th-h));
+  --accent-foreground: oklch(0.17 0.02 var(--th-h));
+  --border: oklch(0.6 0.02 var(--th-h) / 42%);
+  --input: oklch(0.6 0.02 var(--th-h) / 38%);
+  --sidebar: oklch(0.97 0.008 var(--th-h) / 98%);
+  --sidebar-foreground: oklch(0.17 0.02 var(--th-h));
+  --sidebar-accent: oklch(0.88 0.025 var(--th-h));
+  --sidebar-accent-foreground: oklch(0.16 0.03 var(--th-h));
+  --sidebar-border: oklch(0.6 0.02 var(--th-h) / 38%);
+  --shadow-glass: 0 18px 40px -22px oklch(0.3 0.04 var(--th-h) / 35%);
+}
+/* Teks gradasi (judul) memakai warna gelap agar terbaca di atas dasar putih. */
+[data-theme^="putih-"] {
+  --gradient-brand: linear-gradient(
+    135deg,
+    oklch(0.42 0.13 var(--th-h)),
+    oklch(0.5 0.11 var(--th-h2))
+  );
+  --gradient-stat: linear-gradient(
+    135deg,
+    oklch(0.48 0.13 var(--th-h)),
+    oklch(0.4 0.1 var(--th-h2))
+  );
+}
+[data-theme^="putih-"] .glass-card {
+  border-color: oklch(0 0 0 / 14%);
+}
+[data-theme^="putih-"] .metal-item {
+  border-color: oklch(0 0 0 / 14%);
+  color: oklch(0.17 0.02 var(--th-h));
+}
+[data-theme^="putih-"] .glass-card::after,
+[data-theme^="putih-"] .metal-item::after {
+  opacity: 0.25;
+}
+
 /* Elemen pratinjau font pada Pengaturan Tampilan. */
 [data-font-preview] {
   font-family: var(--app-font, var(--font-sans));
@@ -2470,7 +2518,12 @@
   font-display: swap;
 }
 
-/* Font aplikasi dipilih lewat atribut data-font pada <html>. */
+/* Font aplikasi dipilih lewat atribut data-font pada <html>.
+   --font-sans ikut dipetakan agar seluruh utility font-sans (dipakai hampir
+   semua komponen) turut memakai font pilihan Super Admin. */
+html[data-font] {
+  --font-sans: var(--app-font);
+}
 html[data-font] body,
 html[data-font] {
   font-family: var(--app-font, var(--font-sans));
