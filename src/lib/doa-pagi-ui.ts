@@ -205,3 +205,37 @@ export function normalizeDoaLogos(raw: unknown): DoaLogoSettings {
   }
   return out;
 }
+
+/**
+ * Rotasi bagian per hari kerja: untuk tiap unit kerja disimpan 5 angka
+ * (Senin..Jumat) berisi nomor urut bagian yang diabsen paling awal.
+ */
+export type DoaRotationSettings = Record<string, number[]>;
+
+export function normalizeDoaRotation(raw: unknown): DoaRotationSettings {
+  const src = (raw ?? {}) as Record<string, unknown>;
+  const out: DoaRotationSettings = {};
+  for (const [ukerId, value] of Object.entries(src)) {
+    const arr = Array.isArray(value) ? value : [];
+    out[ukerId] = Array.from({ length: 5 }, (_, i) => {
+      const n = Number(arr[i]);
+      return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
+    });
+  }
+  return out;
+}
+
+/** Indeks hari kerja hari ini (0 = Senin .. 4 = Jumat); Sabtu/Minggu -> Senin. */
+export function weekdayIndex(iso: string): number {
+  const d = new Date(`${iso}T00:00:00`);
+  const dow = d.getDay(); // 0 Minggu .. 6 Sabtu
+  if (dow === 0 || dow === 6) return 0;
+  return dow - 1;
+}
+
+/** Putar daftar bagian agar dimulai dari nomor urut tertentu, lalu kembali ke atas. */
+export function rotateSections<T>(list: T[], startNumber: number): T[] {
+  if (list.length < 2) return list;
+  const start = Math.min(Math.max(Math.floor(startNumber) || 1, 1), list.length) - 1;
+  return [...list.slice(start), ...list.slice(0, start)];
+}

@@ -29,20 +29,24 @@ import {
   isQrisFilled,
   normalizeDoaLogos,
   toIsoDate,
+  weekdayNames,
 
   type DoaLogoKey,
   type DoaLogoSettings,
   type DoaPagiSection,
+  type DoaRotationSettings,
 } from "@/lib/doa-pagi-ui";
 import {
   deleteDoaPagiSection,
   getDoaPagiKehadiranOptions,
   getDoaPagiLogos,
   getDoaPagiReport,
+  getDoaPagiRotation,
   getDoaPagiSettings,
   resetDoaPagiData,
   saveDoaPagiKehadiranOptions,
   saveDoaPagiLogos,
+  saveDoaPagiRotation,
   saveDoaPagiSection,
 } from "@/lib/doa-pagi.functions";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -1196,6 +1200,7 @@ function Page() {
         <>
         <LogoSettings />
         <KehadiranSettings />
+        <RotationSettings />
 
         {q.isLoading ? (
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1433,5 +1438,120 @@ function Page() {
         )}
       </div>
     </AdminPage>
+  );
+}
+
+/** Pengaturan rotasi: bagian mana yang diabsen paling awal tiap hari kerja. */
+function RotationSettings() {
+  const qc = useQueryClient();
+  const settings = useQuery({
+    queryKey: ["doa-pagi", "settings"],
+    queryFn: () => getDoaPagiSettings(),
+  });
+  const rot = useQuery({
+    queryKey: ["doa-pagi", "rotasi"],
+    queryFn: () => getDoaPagiRotation(),
+  });
+
+  const ukers = settings.data?.ukers ?? [];
+  const [ukerId, setUkerId] = useState("");
+  const activeUkerId = ukerId || ukers[0]?.id || "";
+
+  const sections = useMemo(
+    () =>
+      (settings.data?.sections ?? [])
+        .filter((s) => s.ukerId === activeUkerId)
+        .slice()
+        .sort((a, b) => a.urutan - b.urutan),
+    [settings.data, activeUkerId],
+  );
+
+  const [draft, setDraft] = useState<DoaRotationSettings | null>(null);
+  const rotation: DoaRotationSettings = draft ?? rot.data?.rotation ?? {};
+  const values = rotation[activeUkerId] ?? [1, 1, 1, 1, 1];
+
+  const save = useMutation({
+    mutationFn: () => saveDoaPagiRotation({ data: { rotation } }),
+    onSuccess: async () => {
+      toast.success("Rotasi bagian tersimpan.");
+      setDraft(null);
+      await qc.invalidateQueries({ queryKey: ["doa-pagi", "rotasi"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  function setDay(i: number, value: number) {
+    const next = values.map((v, idx) => (idx === i ? value : v));
+    setDraft({ ...rotation, [activeUkerId]: next });
+  }
+
+  return (
+    <div className="glass-card space-y-4 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="flex items-center gap-2 font-semibold">
+            <RotateCcw className="size-4" /> Rotasi Bagian per Hari
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Tentukan bagian mana yang diabsen paling awal untuk tiap hari kerja. Setelah bagian
+            terakhir, absensi otomatis lanjut ke bagian di atasnya yang belum diabsen.
+          </p>
+        </div>
+        <Button onClick={() => save.mutate()} disabled={save.isPending || !activeUkerId}>
+          {save.isPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Save className="size-4" />
+          )}
+          Simpan Rotasi
+        </Button>
+      </div>
+
+      <div className="min-w-56 max-w-sm">
+        <Label htmlFor="rotasi-uker">Unit Kerja</Label>
+        <select
+          id="rotasi-uker"
+          value={activeUkerId}
+          onChange={(e) => setUkerId(e.target.value)}
+          className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+        >
+          {ukers.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.nama}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {settings.isLoading || rot.isLoading ? (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" /> Memuat rotasi…
+        </p>
+      ) : sections.length ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {weekdayNames.map((hari, i) => (
+            <div key={hari}>
+              <Label htmlFor={`rotasi-${i}`}>{hari}</Label>
+              <select
+                id={`rotasi-${i}`}
+                value={String(values[i] ?? 1)}
+                onChange={(e) => setDay(i, Number(e.target.value))}
+                className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {sections.map((s, idx) => (
+                  <option key={s.id} value={idx + 1}>
+                    {idx + 1}. {s.nama}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Belum ada bagian pada unit kerja ini. Tambahkan bagian dulu.
+        </p>
+      )}
+    </div>
   );
 }

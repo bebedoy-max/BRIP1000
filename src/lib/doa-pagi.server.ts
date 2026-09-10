@@ -5,6 +5,7 @@ import type {
   DoaPagiRecord,
   DoaPagiSection,
   KehadiranOption,
+  DoaRotationSettings,
 } from "@/lib/doa-pagi-ui";
 
 type Db = { from: (t: string) => any };
@@ -322,6 +323,32 @@ export async function saveKehadiranOptions(options: KehadiranOption[]) {
     {
       id: "default",
       data: normalizeKehadiranOptions(options),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "id" },
+  );
+  if (error) throw new Error(error.message);
+}
+
+/** Rotasi bagian per hari kerja (Senin–Jumat) untuk setiap unit kerja. */
+export async function getRotationSettings(): Promise<DoaRotationSettings> {
+  const { normalizeDoaRotation } = await import("@/lib/doa-pagi-ui");
+  const db = await admin();
+  const { data } = await db
+    .from("doa_pagi_rotasi")
+    .select("data")
+    .eq("id", "default")
+    .maybeSingle();
+  return normalizeDoaRotation((data as { data?: unknown } | null)?.data);
+}
+
+export async function saveRotationSettings(value: DoaRotationSettings) {
+  const { normalizeDoaRotation } = await import("@/lib/doa-pagi-ui");
+  const db = await admin();
+  const { error } = await db.from("doa_pagi_rotasi").upsert(
+    {
+      id: "default",
+      data: normalizeDoaRotation(value),
       updated_at: new Date().toISOString(),
     },
     { onConflict: "id" },

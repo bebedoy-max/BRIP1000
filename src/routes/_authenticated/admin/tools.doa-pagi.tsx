@@ -20,6 +20,8 @@ import {
   weekdayLabels,
   weekdayNames,
   workWeekDates,
+  weekdayIndex,
+  rotateSections,
   defaultDoaLogos,
   type DoaLogo,
   type DoaLogoSettings,
@@ -31,6 +33,7 @@ import {
   getDoaPagiBoard,
   getDoaPagiKehadiranOptions,
   getDoaPagiLogos,
+  getDoaPagiRotation,
   listDoaPagiUkers,
   saveDoaPagiRecord,
   saveDoaPagiRecords,
@@ -146,7 +149,11 @@ function SectionScreen({
   committed,
   animKey,
   options,
+  activeIdx,
+  onFocusRow,
 }: {
+  activeIdx: number;
+  onFocusRow: (idx: number) => void;
   section: DoaPagiSection;
   committed: Draft;
   animKey: string | null;
@@ -219,12 +226,21 @@ function SectionScreen({
         </div>
 
         {section.pekerja.length ? (
-          section.pekerja.map((nama, row) => {
+          <>
+          {/* Ruang kosong atas agar baris pertama tepat di tengah layar. */}
+          {solo ? null : <div className="doa-spacer" aria-hidden />}
+          {section.pekerja.map((nama, row) => {
             const key = recordKey(section.id, nama, today);
             const cell = draft[key] ?? { qris: "", kehadiran: "" };
             const idx = inputIndexOf(section.id, row);
+            const dist = Math.min(Math.abs(idx - activeIdx), 3);
             return (
-              <div key={nama} className={`doa-row${solo ? " doa-row-solo" : ""}`}>
+              <div
+                key={nama}
+                className={`doa-row${solo ? " doa-row-solo" : " doa-row-zoom"}`}
+                data-dist={solo ? undefined : dist}
+                data-active={!solo && idx === activeIdx ? "true" : undefined}
+              >
                 <div className="doa-pill doa-name">{nama}</div>
                 <div className="doa-pill doa-jabatan">{jabatanOf(nama)}</div>
 
@@ -248,8 +264,9 @@ function SectionScreen({
                     ref={(el) => registerInput(idx, el)}
                     value={cell.qris}
                     list="doa-qris-list"
-                    placeholder="nama merchant qris"
+                    
                     onChange={(e) => onChangeQris(nama, e.target.value)}
+                    onFocus={() => onFocusRow(idx)}
                     onBlur={() => {
                       if (cell.qris.trim()) onCommit(nama);
                     }}
@@ -284,7 +301,10 @@ function SectionScreen({
                 </div>
               </div>
             );
-          })
+          })}
+          {/* Ruang kosong bawah agar baris terakhir tetap bisa ke tengah. */}
+          {solo ? null : <div className="doa-spacer doa-spacer-end" aria-hidden />}
+          </>
         ) : (
           <p className="doa-empty">
             Belum ada pekerja pada bagian ini. Atur di Setting → Absensi Doa Pagi.
@@ -449,13 +469,36 @@ function Page() {
   const [locked, setLocked] = useState(false);
   // Opening screen: absensi baru dibuka setelah admin menekan Enter.
   const [started, setStarted] = useState(false);
+  // Baris yang sedang disorot (zoom) pada layar absensi.
+  const [activeIdx, setActiveIdx] = useState(0);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
 
+  /** Saat absensi dimulai, sorot & fokuskan baris pertama di tengah layar. */
+  useEffect(() => {
+    if (!started) return;
+    const t = window.setTimeout(() => {
+      setActiveIdx(0);
+      const first = inputs.current[0];
+      if (!first) return;
+      first.focus();
+      first.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 300);
+    return () => window.clearTimeout(t);
+  }, [started]);
 
-  const sections: DoaPagiSection[] = useMemo(
-    () => (board.data?.sections ?? []).slice().sort((a, b) => a.urutan - b.urutan),
-    [board.data],
-  );
+
+  const rotationQuery = useQuery({
+    queryKey: ["doa-pagi", "rotasi"],
+    queryFn: () => getDoaPagiRotation(),
+  });
+
+  /** Urutan bagian mengikuti rotasi harian: mulai dari bagian pilihan admin. */
+  const sections: DoaPagiSection[] = useMemo(() => {
+    const sorted = (board.data?.sections ?? []).slice().sort((a, b) => a.urutan - b.urutan);
+    const days = uker ? rotationQuery.data?.rotation?.[uker.id] : undefined;
+    const start = days?.[weekdayIndex(today)] ?? 1;
+    return rotateSections(sorted, start);
+  }, [board.data, rotationQuery.data, uker, today]);
 
   /** Jabatan pekerja (dari master pegawai unit kerja). */
   const jabatanOf = useMemo(() => {
@@ -464,11 +507,11 @@ function Page() {
     return (nama: string) => map.get(nama) ?? "-";
   }, [board.data]);
 
-  /** Kunci absensi harian tersimpan per unit kerja + tanggal. */
+  /** Kunci hanya berlaku dalam sesi ini; status selesai sebenarnya dibaca dari database. */
   const lockKey = uker ? `doa-pagi-lock|${uker.id}|${today}` : null;
   useEffect(() => {
-    if (!lockKey) return;
-    setLocked(window.localStorage.getItem(lockKey) === "1");
+    if (lockKey) window.localStorage.removeItem(lockKey);
+    setLocked(false);
   }, [lockKey]);
 
 
@@ -519,7 +562,7 @@ function Page() {
       setCommitted({});
       setAskSave(false);
       setLocked(true);
-      if (lockKey) window.localStorage.setItem(lockKey, "1");
+      void board.refetch();
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -601,8 +644,20 @@ function Page() {
     );
 
 
-  // Opening screen selalu tampil lebih dulu, sebelum layar selesai absensi.
-  if (!started)
+  // Absensi hari ini dianggap selesai bila seluruh pekerja sudah punya data tersimpan.
+  const filledToday = new Set(
+    ((board.data?.records as DoaPagiRecord[] | undefined) ?? [])
+      .filter((r) => r.tanggal === today && (r.qris.trim() !== "" || r.kehadiran.trim() !== ""))
+      .map((r) => recordKey(r.sectionId, r.pekerja, r.tanggal)),
+  );
+  const totalPekerja = sections.reduce((n, s) => n + s.pekerja.length, 0);
+  const allFilled =
+    totalPekerja > 0 &&
+    sections.every((s) => s.pekerja.every((p) => filledToday.has(recordKey(s.id, p, today))));
+  const savedToday = locked || (!board.isLoading && allFilled);
+
+  // Belum selesai: tampilkan opening screen dulu, lanjut ke absensi setelah Enter.
+  if (!savedToday && !started)
     return (
       <div className="doa-root">
         <button
@@ -622,7 +677,7 @@ function Page() {
       </div>
     );
 
-  if (locked) {
+  if (savedToday) {
     const tanggalPanjang = longDate(today);
     return (
 
@@ -706,6 +761,8 @@ function Page() {
             registerInput={(idx, el) => {
               inputs.current[idx] = el;
             }}
+            activeIdx={activeIdx}
+            onFocusRow={setActiveIdx}
             focusNext={(idx) => {
               const next = inputs.current[idx + 1];
               if (!next) {

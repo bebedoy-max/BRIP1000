@@ -1294,6 +1294,82 @@
   padding-bottom: 0.5rem;
 }
 
+/* Ruang kosong agar baris pertama & terakhir tetap bisa berada di tengah layar. */
+.doa-spacer {
+  flex: 0 0 auto;
+  height: 30vh;
+}
+.doa-spacer-end {
+  height: 45vh;
+}
+
+/* Zoom highlight: baris aktif membesar ke atas-bawah, lebar kolom tetap penuh
+   agar kolom nama & kehadiran tidak terpotong. */
+.doa-row-zoom {
+  width: 100%;
+  transition:
+    opacity 0.45s ease,
+    margin 0.45s ease,
+    font-size 0.45s ease;
+}
+.doa-row-zoom .doa-pill,
+.doa-row-zoom .doa-name,
+.doa-row-zoom .doa-jabatan,
+.doa-row-zoom .doa-input,
+.doa-row-zoom .doa-select,
+.doa-row-zoom .doa-mark,
+.doa-row-zoom .doa-day-chip {
+  transition:
+    min-height 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    font-size 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.45s ease,
+    height 0.45s ease;
+}
+
+.doa-row-zoom[data-dist="0"] {
+  opacity: 1;
+  margin: 1rem 0;
+}
+.doa-row-zoom[data-dist="0"] .doa-pill {
+  min-height: 5rem;
+  border-width: 3px;
+  box-shadow: 0 18px 45px -20px rgba(0, 0, 0, 0.65);
+}
+.doa-row-zoom[data-dist="0"] .doa-name {
+  font-size: clamp(1.4rem, 2.2vw, 2.4rem);
+  font-weight: 800;
+  line-height: 1.1;
+}
+/* Kolom pendukung: font lebih kecil agar muat rapi dalam satu/dua baris. */
+.doa-row-zoom[data-dist="0"] .doa-jabatan,
+.doa-row-zoom[data-dist="0"] .doa-input,
+.doa-row-zoom[data-dist="0"] .doa-select {
+  font-size: clamp(0.95rem, 1.15vw, 1.3rem);
+  font-weight: 600;
+  line-height: 1.15;
+}
+.doa-row-zoom[data-dist="0"] .doa-mark {
+  width: 2.9rem;
+  height: 2.9rem;
+}
+
+.doa-row-zoom[data-dist="1"] {
+  opacity: 0.7;
+}
+.doa-row-zoom[data-dist="2"] {
+  opacity: 0.5;
+}
+.doa-row-zoom[data-dist="3"] {
+  opacity: 0.38;
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .doa-row-zoom {
+    transition: none;
+  }
+}
+
 .doa-col-label {
   text-align: center;
   font-size: clamp(0.95rem, 1.5vw, 1.5rem);
