@@ -177,10 +177,9 @@ function SectionScreen({
   registerInput: (idx: number, el: HTMLInputElement | null) => void;
   focusNext: (idx: number) => void;
 }) {
-  // Bagian dengan satu pekerja (mis. Pemimpin Cabang) ditampilkan selebar
-  // bagian lain, namun dengan tinggi baris lebih besar karena ruang luas.
-  const isLeader = /pemimpin\s+cabang/i.test(section.nama);
-  const solo = section.pekerja.length === 1;
+  // Semua bagian — termasuk yang hanya berisi satu pekerja — memakai
+  // perilaku zoom & scroll yang sama dengan bagian berpekerja banyak.
+  const solo = false;
   return (
     <section className="doa-screen">
       <header className="doa-head">
@@ -190,9 +189,7 @@ function SectionScreen({
           className="doa-head-logo"
           style={logoStyle(logos.bo)}
         />
-        <h2 className="doa-title">
-          {isLeader ? section.nama.toUpperCase() : `BAGIAN ${section.nama.toUpperCase()}`}
-        </h2>
+        <h2 className="doa-title">{section.nama.toUpperCase()}</h2>
         <div className="doa-head-right">
           <img
             src={logos.danantara.url ?? logoDanantara}
