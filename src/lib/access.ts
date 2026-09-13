@@ -123,7 +123,7 @@ export const menuItems: MenuItem[] = [
   { key: "tools", to: "/admin/tools", label: "SuperIT Apps", icon: Wrench, defaults: ADMIN_ONLY },
   {
     key: "doa-pagi",
-    to: "/admin/tools/doa-pagi",
+    to: "/admin/doa-pagi",
     label: "Absensi, Doa & Briefing Pagi",
     icon: Sunrise,
     defaults: ALL,

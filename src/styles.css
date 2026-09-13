@@ -1169,10 +1169,17 @@
   inset: 0;
   z-index: 40;
   overflow-y: auto;
-  scroll-snap-type: y mandatory;
+  overscroll-behavior-y: none;
+  /* Tanpa scroll-snap & background-attachment fixed: keduanya memicu
+     layar berkedip saat scroll halus otomatis di mode fullscreen. */
   background-color: var(--background);
   background-image: var(--gradient-page);
-  background-attachment: fixed;
+}
+
+/* Layar pembuka/penutup tidak memiliki isi yang perlu digulir. Mengunci
+   overflow mencegah scrollbar dan kompositor fullscreen berganti lapisan. */
+.doa-root-static {
+  overflow: hidden;
 }
 
 .doa-close {
@@ -1196,8 +1203,8 @@
 .doa-screen {
   display: flex;
   height: 100vh;
+  min-height: 100vh;
   overflow: hidden;
-  scroll-snap-align: start;
   flex-direction: column;
   background: transparent;
   color: var(--foreground);
@@ -1205,6 +1212,9 @@
 
 .doa-head {
   display: grid;
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 3;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 1rem;
@@ -1261,6 +1271,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
   scroll-behavior: smooth;
   flex-direction: column;
   gap: 0.5rem;
@@ -1356,6 +1367,38 @@
 }
 .doa-row-zoom[data-dist="3"] {
   opacity: 0.38;
+}
+
+/* Baris tepat di bawah baris aktif: dibesarkan agar mudah dibaca
+   sebagai pekerja berikutnya. Ukuran di antara baris aktif (dist=0)
+   dan baris kecil lainnya. Tingkat samar & jarak tetap sama dengan
+   baris kecil lainnya agar mata tidak konflik fokus. Harus setelah
+   [data-dist] agar menang. */
+/* Opacity tidak ditimpa di sini: baris berikutnya memakai tingkat samar
+   yang sama dengan baris kecil lainnya (aturan [data-dist] di atas). */
+.doa-row-zoom[data-next="true"] {
+  margin: 0;
+}
+.doa-row-zoom[data-next="true"] .doa-pill {
+  min-height: 3.75rem;
+  border-width: 2px;
+  box-shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.55);
+}
+.doa-row-zoom[data-next="true"] .doa-name {
+  font-size: clamp(1.05rem, 1.6vw, 1.75rem);
+  font-weight: 700;
+  line-height: 1.12;
+}
+.doa-row-zoom[data-next="true"] .doa-jabatan,
+.doa-row-zoom[data-next="true"] .doa-input,
+.doa-row-zoom[data-next="true"] .doa-select {
+  font-size: clamp(0.88rem, 1.05vw, 1.2rem);
+  font-weight: 600;
+  line-height: 1.15;
+}
+.doa-row-zoom[data-next="true"] .doa-mark {
+  width: 2.45rem;
+  height: 2.45rem;
 }
 
 
@@ -1672,7 +1715,6 @@
     color-mix(in oklab, var(--primary) 18%, transparent),
     transparent 65%
   );
-  filter: blur(60px);
   pointer-events: none;
 }
 
@@ -1687,29 +1729,15 @@
   padding: clamp(2rem, 5vh, 4rem) clamp(1.5rem, 5vw, 4rem);
   border-radius: 2rem;
   border: 1px solid color-mix(in oklab, var(--primary) 30%, transparent);
-  background: color-mix(in oklab, var(--background) 65%, transparent);
-  backdrop-filter: blur(18px);
+  background: color-mix(in oklab, var(--background) 94%, var(--card));
   box-shadow:
     0 40px 120px -40px color-mix(in oklab, var(--primary) 55%, transparent),
     inset 0 1px 0 color-mix(in oklab, white 12%, transparent);
-  animation: doa-done-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes doa-done-rise {
-  from {
-    opacity: 0;
-    transform: translateY(28px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
 }
 
 .doa-done-logo {
   width: min(720px, 80%);
   height: auto;
-  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.55));
 }
 
 .doa-done-rule {
@@ -1769,22 +1797,11 @@
   background: color-mix(in oklab, var(--primary) 90%, transparent);
   color: var(--primary-foreground);
   border: 1px solid color-mix(in oklab, var(--primary) 40%, transparent);
-  transition:
-    transform 0.2s ease,
-    background 0.2s ease,
-    box-shadow 0.2s ease;
+  transition: background-color 0.15s ease;
 }
 
 .doa-done-dashboard:hover {
-  transform: translateY(-2px);
   background: color-mix(in oklab, var(--primary) 100%, transparent);
-  box-shadow: 0 12px 30px -12px color-mix(in oklab, var(--primary) 55%, transparent);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .doa-done-inner {
-    animation: none;
-  }
 }
 
 

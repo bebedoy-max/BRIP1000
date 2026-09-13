@@ -77,10 +77,12 @@ export function slideImageSources(photo: string, size = 1200): string[] {
   const id = extractDriveId(raw) ?? (/^(https?:|data:|blob:)/i.test(raw) ? null : raw);
   if (!id) return [raw];
   return [
-    driveThumb(id, size),
+    // CDN langsung lebih andal daripada URL redirect drive.google.com,
+    // terutama saat banyak gambar dimuat bersamaan (carousel).
     `https://lh3.googleusercontent.com/d/${id}=w${size}`,
+    driveThumb(id, size),
     `https://drive.google.com/uc?export=view&id=${id}`,
-    driveThumb(id, 400),
+    `https://lh3.googleusercontent.com/d/${id}=w400`,
   ];
 }
 

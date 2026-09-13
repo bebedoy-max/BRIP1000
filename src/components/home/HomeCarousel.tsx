@@ -264,6 +264,21 @@ export function HomeCarousel() {
     return map;
   }, [slides, focusMap]);
 
+  // Gambar slide dimuat bertahap: hanya slide aktif dan tetangganya yang
+  // memasang <img>. Memuat puluhan gambar Drive sekaligus membuat Google
+  // membatasi permintaan sehingga banyak slide tampil tanpa gambar.
+  const [mounted, setMounted] = useState<ReadonlySet<number>>(new Set([0]));
+  useEffect(() => {
+    if (!slides.length) return;
+    setMounted((prev) => {
+      const next = new Set(prev);
+      next.add(idx);
+      next.add((idx + 1) % slides.length);
+      next.add((idx - 1 + slides.length) % slides.length);
+      return next;
+    });
+  }, [idx, slides.length]);
+
   const active = slides[idx % (slides.length || 1)];
   const photoOf = (s: Slide) => photoBySlide[s.id] ?? null;
 
@@ -277,19 +292,19 @@ export function HomeCarousel() {
           className="absolute inset-0 transition-opacity duration-700"
           style={{ opacity: i === idx ? 1 : 0, pointerEvents: i === idx ? "auto" : "none" }}
         >
-          {photo ? (
+          {photo && mounted.has(i) ? (
             <SlideImage
               photo={photo}
               focus={focusMap[photo]}
               alt={s.title}
               className="absolute inset-0 size-full object-cover"
             />
-          ) : (
+          ) : !photo ? (
             <div
               className="absolute inset-0"
               style={{ backgroundImage: "var(--gradient-stat)", opacity: 0.35 }}
             />
-          )}
+          ) : null}
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-background/10" />
         </div>
         );

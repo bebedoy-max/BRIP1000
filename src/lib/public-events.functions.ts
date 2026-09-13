@@ -15,7 +15,36 @@ export type PublicEventPhotoRow = {
  * Foto event untuk dashboard publik. Dibaca di server (service role) karena
  * tabel event_photos hanya bisa dibaca user terautentikasi; hanya id file
  * Drive & id event yang dikembalikan (tanpa data pribadi).
+ *
+ * Foto diambil per event (bukan satu kueri global) supaya event lama tidak
+ * kehabisan jatah baris saat event baru punya banyak foto.
  */
+export const getPublicEventPhotosByEvent = createServerFn({ method: "POST" })
+  .inputValidator((input: { eventIds?: string[]; perEvent?: number }) => input)
+  .handler(async ({ data }): Promise<Record<string, string[]>> => {
+    const ids = (Array.isArray(data.eventIds) ? data.eventIds : []).filter(
+      (v): v is string => typeof v === "string" && v.length > 0,
+    ).slice(0, 30);
+    const perEvent = Math.min(10, Math.max(1, Math.floor(Number(data.perEvent ?? 3))));
+    const out: Record<string, string[]> = {};
+    if (!ids.length) return out;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = supabaseAdmin as unknown as { from: (t: string) => any };
+    await Promise.all(
+      ids.map(async (id) => {
+        const { data: rows } = await db
+          .from("event_photos")
+          .select("drive_file_id")
+          .eq("event_id", id)
+          .order("processed_at", { ascending: false })
+          .limit(perEvent);
+        out[id] = ((rows ?? []) as { drive_file_id: string }[]).map((r) => r.drive_file_id);
+      }),
+    );
+    return out;
+  });
+
+/** @deprecated Pakai getPublicEventPhotosByEvent; kueri global ini kehabisan baris untuk event lama. */
 export const getPublicEventPhotos = createServerFn({ method: "GET" }).handler(
   async (): Promise<PublicEventPhoto[]> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
