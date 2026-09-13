@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useParams, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ArrowLeft, Lock } from "lucide-react";
+import { ArrowLeft, Lock, Search } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PublicLayout } from "@/components/PublicLayout";
 import { Button } from "@/components/ui/button";
@@ -139,6 +139,14 @@ function DetailTable({
   rows: Record<string, unknown>[];
 }) {
   const [photoRow, setPhotoRow] = useState<Record<string, unknown> | null>(null);
+  const [search, setSearch] = useState("");
+  const visibleRows = search.trim()
+    ? rows.filter((r) =>
+        Object.values(r).some((v) =>
+          String(v ?? "").toLowerCase().includes(search.trim().toLowerCase()),
+        ),
+      )
+    : rows;
   const showPhotoCol = !!cfg.photoEntity && !cfg.hidePhotoColumn;
   const fromPath = useRouterState({ select: (st) => st.location.pathname });
   const sample = rows[0] ?? {};
@@ -159,6 +167,18 @@ function DetailTable({
 
   return (
     <div className="glass-card mt-6 overflow-x-auto p-1">
+      {cfg.searchable ? (
+        <div className="relative m-3 md:max-w-sm">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`Cari ${cfg.title.toLowerCase()}…`}
+            className="w-full rounded-xl border border-border/60 bg-background/60 py-2 pr-3 pl-9 text-sm outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring/40"
+          />
+        </div>
+      ) : null}
       <table className="w-full min-w-0 md:min-w-[640px] border-separate border-spacing-0 text-sm">
         <thead>
           <tr>
@@ -184,7 +204,7 @@ function DetailTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, idx) => (
+          {visibleRows.map((r, idx) => (
             <tr key={String(r["id"] ?? idx)} className="transition-colors hover:bg-secondary/20">
               {columns.map((c) => (
                 <td key={c.key} className={`border-t border-border/40 p-3 align-top ${colClass(c)}`}>
@@ -252,7 +272,12 @@ function DetailTable({
           ))}
         </tbody>
       </table>
-      <p className="p-3 text-xs text-muted-foreground">{rows.length} data ditampilkan.</p>
+      {search.trim() && visibleRows.length === 0 ? (
+        <p className="p-6 text-center text-sm text-muted-foreground">
+          Tidak ada hasil untuk “{search.trim()}”.
+        </p>
+      ) : null}
+      <p className="p-3 text-xs text-muted-foreground">{visibleRows.length} data ditampilkan.</p>
 
       {showPhotoCol ? (
         <Dialog open={!!photoRow} onOpenChange={(v) => !v && setPhotoRow(null)}>

@@ -22,6 +22,8 @@ export type PublicDetailConfig = {
   hidePhotoColumn?: boolean;
   /** Kunci kolom yang tetap tampil pada layar mobile (sisanya disembunyikan). */
   mobileColumns?: string[];
+  /** Tampilkan kolom pencarian teks di atas tabel detail. */
+  searchable?: boolean;
   /** Kolom yang ditampilkan (bila ada pada data). */
   columns: {
     key: string;
@@ -104,12 +106,13 @@ export const publicDetails: PublicDetailConfig[] = [
     table: "qris_merchants",
     orderBy: "nama_merchant",
     nameColumn: "nama_merchant",
+    searchable: true,
     mobileColumns: ["storeid", "nama_merchant"],
     columns: [
       { key: "storeid", label: "Store ID" },
       { key: "nama_merchant", label: "Nama Merchant" },
       { key: "alamat", label: "Alamat" },
-      { key: "brdesc", label: "BRDESC" },
+      { key: "brdesc", label: "Unit Kerja" },
       { key: "merchant_type", label: "Tipe Merchant" },
       { key: "status_qris", label: "Status QRIS" },
     ],

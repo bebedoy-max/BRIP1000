@@ -1,4 +1,4 @@
-import { CalendarCheck, Gift, Sunrise, Trophy, Video, Vote, type LucideIcon } from "lucide-react";
+import { CalendarCheck, Gift, Trophy, Video, Vote, type LucideIcon } from "lucide-react";
 
 /**
  * Registry tunggal untuk seluruh fitur di menu SuperIT Apps.
@@ -23,15 +23,6 @@ export const superItApps: SuperItApp[] = [
     description:
       "Buat absensi digital per event, atur field & tampilannya, bagikan linknya ke pekerja, lalu pantau datanya.",
     icon: CalendarCheck,
-    ready: true,
-  },
-  {
-    key: "doa-pagi",
-    to: "/admin/tools/doa-pagi",
-    label: "Absensi, Doa & Briefing Pagi",
-    description:
-      "Tampilan absensi doa & briefing pagi per bagian: pilih unit kerja, isi absen QRIS, dan pantau kehadiran hari kerja.",
-    icon: Sunrise,
     ready: true,
   },
   {

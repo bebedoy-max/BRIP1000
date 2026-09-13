@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, ImageOff } from "lucide-react";
+import { Check, ExternalLink, ImageOff, Trash2 } from "lucide-react";
 import { db, driveFull, driveThumb, type EventPhoto } from "@/lib/face";
 import { getPublicEventPhotoPage } from "@/lib/public-events.functions";
 import { purgeMissingPhoto } from "@/lib/photo-cleanup.functions";
+import { deleteEventPhotos } from "@/lib/event-admin.functions";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 const PAGE_SIZE = 48;
 
@@ -26,17 +29,24 @@ export function EventPhotoGrid({
   workerId,
   publicAccess = false,
   emptyText = "Belum ada foto.",
+  manage = false,
 }: {
   eventId?: string;
   workerId?: string;
   publicAccess?: boolean;
   emptyText?: string;
+  /** true = admin bisa memilih & menghapus foto tertentu. */
+  manage?: boolean;
 }) {
   const [preview, setPreview] = useState<EventPhoto | null>(null);
   const [broken, setBroken] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [deleting, setDeleting] = useState(false);
   const sentinel = useRef<HTMLDivElement | null>(null);
   const publicPhotoPage = useServerFn(getPublicEventPhotoPage);
   const purge = useServerFn(purgeMissingPhoto);
+  const removePhotos = useServerFn(deleteEventPhotos);
+  const confirm = useConfirm();
 
   /** Foto yang file Drive-nya sudah hilang: sembunyikan & bersihkan datanya. */
   const handleBroken = (fileId: string) => {
@@ -98,26 +108,87 @@ export function EventPhotoGrid({
       </div>
     );
 
+  const toggle = (id: string) =>
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  async function handleDeleteSelected() {
+    if (!selected.length) return;
+    const ok = await confirm({
+      title: `Hapus ${selected.length} foto?`,
+      description: "Foto dihapus dari database dan Google Drive dan tidak bisa dikembalikan.",
+      confirmText: "Hapus",
+      destructive: true,
+    });
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      const res = await removePhotos({ data: { ids: selected } });
+      toast.success(`${res.removed} foto dihapus (Drive: ${res.driveDeleted}).`);
+      setSelected([]);
+      await q.refetch();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <>
+      {manage ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <p className="text-sm text-muted-foreground">
+            {selected.length ? `${selected.length} foto dipilih` : "Klik foto untuk memilih."}
+          </p>
+          <div className="ml-auto flex gap-2">
+            {selected.length ? (
+              <Button size="sm" variant="ghost" onClick={() => setSelected([])}>
+                Batal pilih
+              </Button>
+            ) : null}
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={!selected.length || deleting}
+              onClick={() => void handleDeleteSelected()}
+            >
+              <Trash2 className="size-4" /> Hapus foto terpilih
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {photos.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => setPreview(p)}
-            className="group overflow-hidden rounded-xl border border-border/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            aria-label={`Buka foto ${p.file_name ?? ""}`}
-          >
-            <img
-              src={driveThumb(p.drive_file_id)}
-              alt={p.file_name ?? "Foto event"}
-              loading="lazy"
-              onError={() => handleBroken(p.drive_file_id)}
-              className="aspect-square w-full object-cover transition-transform duration-200 group-hover:scale-105"
-            />
-          </button>
-        ))}
+        {photos.map((p) => {
+          const isPicked = selected.includes(p.id);
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => (manage ? toggle(p.id) : setPreview(p))}
+              onDoubleClick={() => manage && setPreview(p)}
+              className={`group relative overflow-hidden rounded-xl border focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
+                isPicked ? "border-destructive ring-2 ring-destructive" : "border-border/60"
+              }`}
+              aria-label={
+                manage ? `Pilih foto ${p.file_name ?? ""}` : `Buka foto ${p.file_name ?? ""}`
+              }
+            >
+              <img
+                src={driveThumb(p.drive_file_id)}
+                alt={p.file_name ?? "Foto event"}
+                loading="lazy"
+                onError={() => handleBroken(p.drive_file_id)}
+                className="aspect-square w-full object-cover transition-transform duration-200 group-hover:scale-105"
+              />
+              {manage && isPicked ? (
+                <span className="absolute top-2 right-2 rounded-full bg-destructive p-1 text-destructive-foreground">
+                  <Check className="size-3.5" />
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
       </div>
 
       <div ref={sentinel} className="h-8" />

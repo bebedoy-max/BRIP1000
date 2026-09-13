@@ -43,7 +43,7 @@ export const Route = createFileRoute("/_authenticated/admin/akses")({
   head: () => ({
     meta: [
       { title: "Pengaturan Halaman — Panel BRI BO Pringsewu" },
-      { name: "description", content: "Atur hak akses menu dan tampilan (tema warna & font) web app." },
+      { name: "description", content: "Atur hak akses menu dan font web app." },
       { property: "og:title", content: "Pengaturan Halaman — Panel BRI BO Pringsewu" },
       { property: "og:description", content: "Pengaturan akses menu dan tampilan aplikasi." },
     ],

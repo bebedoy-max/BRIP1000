@@ -224,9 +224,17 @@ export function InfoBoardManager({ canWrite }: { canWrite: boolean }) {
         aktif: form.aktif,
         urutan: Number(form.urutan) || 1,
       };
-      const { error } = editId
+      let { error } = editId
         ? await db.from("info_board_slides").update(payload).eq("id", editId)
         : await db.from("info_board_slides").insert(payload);
+      // Database lama mungkin belum punya kolom transisi_ms — simpan tanpa kolom itu.
+      if (error && /transisi_ms/i.test(error.message)) {
+        const rest = { ...payload } as Partial<typeof payload>;
+        delete rest.transisi_ms;
+        ({ error } = editId
+          ? await db.from("info_board_slides").update(rest).eq("id", editId)
+          : await db.from("info_board_slides").insert(rest));
+      }
       if (error) throw error;
     },
     onSuccess: () => {
