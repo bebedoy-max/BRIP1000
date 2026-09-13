@@ -2,8 +2,10 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Newspaper } from "lucide-react";
 
-import { getNews, type NewsItem } from "@/lib/home-feeds.functions";
+import { getNews, NEWS_CATEGORIES, type NewsCategory, type NewsItem } from "@/lib/home-feeds.functions";
+import { Button } from "@/components/ui/button";
 import { NewsArticleDialog } from "./NewsArticleDialog";
+import { PanelLabel } from "./PanelLabel";
 
 const THREE_HOURS = 3 * 60 * 60 * 1000;
 
@@ -29,21 +31,34 @@ export function NewsPanel() {
     retry: 2,
     placeholderData: (prev) => prev,
   });
-  const items = (q.data ?? []).slice(0, 10);
-
-
+  const [activeCategory, setActiveCategory] = useState<NewsCategory>("Nasional");
   const [selected, setSelected] = useState<NewsItem | null>(null);
+  const items = q.data?.[activeCategory] ?? [];
 
   return (
     <div className="glass-card flex h-fit flex-col p-5">
-      <p className="flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-accent uppercase">
-        <Newspaper className="size-4" /> Berita
-      </p>
+      <PanelLabel icon={Newspaper} label="Berita" accent="news" />
+      <div className="mt-3 grid grid-cols-3 gap-1 rounded-lg border border-border/60 bg-background/35 p-1 sm:grid-cols-5" role="tablist" aria-label="Kategori berita">
+        {NEWS_CATEGORIES.map((category) => (
+          <Button
+            key={category}
+            type="button"
+            role="tab"
+            size="sm"
+            variant={activeCategory === category ? "default" : "ghost"}
+            aria-selected={activeCategory === category}
+            onClick={() => setActiveCategory(category)}
+            className="h-7 min-w-0 px-1 text-[10px] sm:text-[11px]"
+          >
+            {category}
+          </Button>
+        ))}
+      </div>
       {q.isLoading ? <p className="mt-3 text-sm text-muted-foreground">Memuat berita…</p> : null}
       {!q.isLoading && !items.length ? (
         <p className="mt-3 text-sm text-muted-foreground">Belum ada berita.</p>
       ) : null}
-      <ul className="mt-3 space-y-3">
+      <ul className="mt-3 space-y-3" role="tabpanel" aria-label={`Berita ${activeCategory}`}>
         {items.map((n) => (
           <li key={n.link} className="border-b border-border/50 pb-2 last:border-0">
             <button

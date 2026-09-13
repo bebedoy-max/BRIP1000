@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Landmark, PiggyBank } from "lucide-react";
 import { getBankRates } from "@/lib/home-feeds.functions";
+import { PanelLabel } from "./PanelLabel";
 
 /** Panel suku bunga Deposito & Giro BRI di bawah Info Pasar. */
 export function BankRatesPanel() {
@@ -14,7 +15,7 @@ export function BankRatesPanel() {
   if (q.isLoading) {
     return (
       <div className="glass-card flex flex-col gap-3 p-5">
-        <p className="text-xs font-semibold tracking-[0.18em] text-accent uppercase">Suku Bunga BRI</p>
+        <PanelLabel icon={Landmark} label="Suku Bunga BRI" accent="rates" />
         <p className="text-sm text-muted-foreground">Memuat suku bunga…</p>
       </div>
     );
@@ -23,7 +24,7 @@ export function BankRatesPanel() {
 
   return (
     <div className="glass-card flex flex-col gap-3 p-5">
-      <p className="text-xs font-semibold tracking-[0.18em] text-accent uppercase">Suku Bunga BRI</p>
+      <PanelLabel icon={Landmark} label="Suku Bunga BRI" accent="rates" />
 
       {data.deposito ? (
         <div className="relative overflow-hidden rounded-2xl border border-emerald-400/45 bg-gradient-to-b from-card/90 via-card/70 to-background/85 p-3 backdrop-blur-xl"

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { ChartNoAxesCombined, TrendingDown, TrendingUp } from "lucide-react";
 import { getMarketQuotes } from "@/lib/home-feeds.functions";
+import { PanelLabel } from "./PanelLabel";
 
 /** Warna glow per instrumen: BBRI biru, USD/IDR merah, emas kuning. */
 const GLOW: Record<string, { ring: string; shadow: string; sheen: string }> = {
@@ -35,7 +36,7 @@ export function MarketPanel() {
 
   return (
     <div className="glass-card flex h-full flex-col gap-3 p-5">
-      <p className="text-xs font-semibold tracking-[0.18em] text-accent uppercase">Info Pasar</p>
+      <PanelLabel icon={ChartNoAxesCombined} label="Info Pasar" accent="market" />
       {q.isLoading ? <p className="text-sm text-muted-foreground">Memuat data pasar…</p> : null}
       {!q.isLoading && !rows.length ? (
         <p className="text-sm text-muted-foreground">Data pasar belum tersedia.</p>

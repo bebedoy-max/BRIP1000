@@ -11,6 +11,7 @@ import {
   loadInfoSlides,
   type InfoSlide,
 } from "@/lib/info-board";
+import { PanelLabel } from "./PanelLabel";
 
 const enterClass: Record<string, string> = {
   fade: "animate-info-fade",
@@ -64,10 +65,10 @@ export function InfoBoard() {
 
   return (
     <section className="glass-card overflow-hidden p-5">
-      <div className="flex items-center justify-between gap-3">
-        <p className="flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-accent uppercase">
-          <MonitorPlay className="size-4" /> Papan Informasi
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <PanelLabel icon={MonitorPlay} label="Papan Informasi" accent="information" />
+        </div>
         <div className="flex items-center gap-1">
           <button
             type="button"

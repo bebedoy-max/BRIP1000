@@ -25,6 +25,8 @@ export const Route = createFileRoute("/_authenticated/admin/")({
       { name: "description", content: "Ringkasan data internal BRI Branch Office Pringsewu." },
       { property: "og:title", content: "Ringkasan Panel — BRI BO Pringsewu" },
       { property: "og:description", content: "Ringkasan data internal BRI BO Pringsewu." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Page,

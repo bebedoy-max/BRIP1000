@@ -31,6 +31,8 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content: "Monitoring unit kerja, ATM, EDC, dan pegawai BRI Branch Office Pringsewu.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Index,

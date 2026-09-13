@@ -91,7 +91,7 @@ export async function keepReadable<T extends { link: string }>(
 /** Cache hasil probe per-link (30 menit) + cache daftar hasil terakhir (3 jam, dengan fallback basi). */
 const probeCache = new Map<string, { at: number; result: ProbeResult }>();
 const PROBE_TTL = 30 * 60_000;
-let listCache: { at: number; items: unknown[] } | null = null;
+const listCache = new Map<string, { at: number; items: unknown[] }>();
 const LIST_TTL = 3 * 60 * 60_000; // sesuai jadwal refresh 3 jam
 
 async function probeCached(link: string): Promise<ProbeResult> {
@@ -112,8 +112,10 @@ export async function keepReadableCached<T extends { link: string; title: string
   items: T[],
   limit: number,
   budgetMs = 12_000,
+  cacheKey = "default",
 ): Promise<T[]> {
-  if (listCache && Date.now() - listCache.at < LIST_TTL) return listCache.items as T[];
+  const cached = listCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < LIST_TTL) return cached.items as T[];
 
   const deadline = Date.now() + budgetMs;
   const kept: (T | null)[] = items.map(() => null);
@@ -150,8 +152,8 @@ export async function keepReadableCached<T extends { link: string; title: string
     }
   }
 
-  if (out.length) listCache = { at: Date.now(), items: out };
-  else if (listCache) return listCache.items as T[];
+  if (out.length) listCache.set(cacheKey, { at: Date.now(), items: out });
+  else if (cached) return cached.items as T[];
   return out;
 }
 

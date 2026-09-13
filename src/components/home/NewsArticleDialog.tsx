@@ -3,10 +3,11 @@
 import { useQuery } from "@tanstack/react-query";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useServerFn } from "@tanstack/react-start";
-import { X, ExternalLink, Newspaper } from "lucide-react";
+import { Newspaper, X } from "lucide-react";
 
 import { getArticleContent, type NewsItem } from "@/lib/home-feeds.functions";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 export function NewsArticleDialog({
   item,
@@ -29,7 +30,6 @@ export function NewsArticleDialog({
   });
 
   const title = q.data?.title && q.data.title.trim() ? q.data.title : item?.title ?? "Berita";
-  const sourceUrl = q.data?.sourceUrl || item?.link;
   const sourceDate = item?.date
     ? new Date(item.date).toLocaleDateString("id-ID", { dateStyle: "long" })
     : null;
@@ -73,10 +73,6 @@ export function NewsArticleDialog({
               </div>
             </div>
 
-            <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-              <X className="size-4" />
-              <span className="sr-only">Tutup</span>
-            </DialogPrimitive.Close>
           </div>
 
           {/* Body */}
@@ -96,14 +92,6 @@ export function NewsArticleDialog({
                   <p className="text-sm text-muted-foreground">
                     Tidak dapat memuat isi artikel secara langsung.
                   </p>
-                  <a
-                    href={sourceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-accent hover:underline"
-                  >
-                    Buka sumber asli <ExternalLink className="size-3.5" />
-                  </a>
                 </div>
               ) : null}
 
@@ -133,14 +121,11 @@ export function NewsArticleDialog({
             <span className="text-xs text-muted-foreground">
               Ditampilkan dari {item?.source ?? "sumber berita"}
             </span>
-            <a
-              href={sourceUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              Buka sumber <ExternalLink className="size-3.5" />
-            </a>
+            <DialogPrimitive.Close asChild>
+              <Button type="button" size="sm">
+                <X /> Tutup
+              </Button>
+            </DialogPrimitive.Close>
           </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

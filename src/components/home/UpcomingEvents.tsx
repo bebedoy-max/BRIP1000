@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CalendarClock } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { PanelLabel } from "./PanelLabel";
 
 const db = supabase as unknown as SupabaseClient;
 
@@ -34,9 +35,7 @@ export function UpcomingEvents() {
 
   return (
     <div className="glass-card flex h-full flex-col p-5">
-      <p className="flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-accent uppercase">
-        <CalendarClock className="size-4" /> Upcoming Event
-      </p>
+      <PanelLabel icon={CalendarClock} label="Upcoming Event" accent="events" />
       {q.isLoading ? <p className="mt-3 text-sm text-muted-foreground">Memuat…</p> : null}
       {!q.isLoading && !rows.length ? (
         <p className="mt-3 text-sm text-muted-foreground">Belum ada agenda mendatang.</p>

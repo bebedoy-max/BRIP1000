@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, ImageOff } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { getPublicEventPhotos } from "@/lib/public-events.functions";
+import { getPublicEventPhotosByEvent } from "@/lib/public-events.functions";
 import { loadDiaryPhotos } from "@/components/DiarySummary";
 import { loadCarouselConfig, shuffle, slideImageSrc, slideImageSources } from "@/lib/carousel";
 import { getImageFocus, type ImageFocusMap } from "@/lib/image-focus.functions";
@@ -84,31 +84,34 @@ async function loadSlides(): Promise<CarouselData> {
       tanggal_mulai: string | null;
     }[];
 
-    let photos: { event_id: string; drive_file_id: string }[] = [];
+    // Foto diambil per event lewat server (getPublicEventPhotosByEvent) supaya
+    // setiap event pasti kebagian foto; kueri global dengan batas baris membuat
+    // event lama kehabisan jatah dan tampil tanpa gambar.
+    const byEvent = new Map<string, string[]>();
     if (evRows.length) {
-      const { data } = await db
-        .from("event_photos")
-        .select("event_id,drive_file_id,processed_at")
-        .in("event_id", evRows.map((e) => e.id))
-        .order("processed_at", { ascending: false })
-        .limit(400);
-      photos = (data ?? []) as typeof photos;
-      // Sebagian event bisa saja tidak terbaca lewat RLS; lengkapi dari sumber publik.
-      const covered = new Set(photos.map((p) => p.event_id));
-      if (evRows.some((e) => !covered.has(e.id))) {
-        try {
-          const extra = await getPublicEventPhotos();
-          photos = [...photos, ...extra.filter((p) => !covered.has(p.event_id))];
-        } catch {
-          /* abaikan */
+      try {
+        const perEvent = await getPublicEventPhotosByEvent({
+          data: { eventIds: evRows.map((e) => e.id), perEvent: MAX_PHOTOS_PER_SLIDE },
+        });
+        for (const [id, list] of Object.entries(perEvent)) byEvent.set(id, list);
+      } catch {
+        /* abaikan; fallback kueri langsung di bawah */
+      }
+      const missing = evRows.filter((e) => !(byEvent.get(e.id)?.length));
+      if (missing.length) {
+        const { data } = await db
+          .from("event_photos")
+          .select("event_id,drive_file_id,processed_at")
+          .in("event_id", missing.map((e) => e.id))
+          .order("processed_at", { ascending: false })
+          .limit(400);
+        const rows = (data ?? []) as { event_id: string; drive_file_id: string }[];
+        for (const p of rows) {
+          const list = byEvent.get(p.event_id) ?? [];
+          list.push(p.drive_file_id);
+          byEvent.set(p.event_id, list);
         }
       }
-    }
-    const byEvent = new Map<string, string[]>();
-    for (const p of photos) {
-      const list = byEvent.get(p.event_id) ?? [];
-      list.push(p.drive_file_id);
-      byEvent.set(p.event_id, list);
     }
     for (const e of evRows) {
       slides.push({
@@ -193,33 +196,42 @@ async function loadSlides(): Promise<CarouselData> {
       .slice(0, MAX_PHOTOS_PER_SLIDE),
   }));
 
-  const ordered = shuffle(cleaned);
+  // Slide langsung dikembalikan; titik fokus diambil terpisah di latar
+  // belakang (lihat useQuery "home-carousel-focus") karena analisis wajah di
+  // server bisa memakan waktu puluhan detik — menunggunya membuat carousel
+  // tampak kosong padahal datanya ada.
+  return { slides: shuffle(cleaned), focus: {} as ImageFocusMap };
+}
 
-
-  // Titik fokus dihitung di server sebelum gambar dirender, jadi crop tidak
-  // berubah setelah gambar tampil.
-  const images = Array.from(
-    new Map(
-      ordered
-        .flatMap((s) => s.photos)
-        .map((p) => [p, { key: p, url: slideImageSrc(p, 1200) }] as const),
-    ).values(),
-  );
-  let focus: ImageFocusMap = {};
-  try {
-    focus = await getImageFocus({ data: { images } });
-  } catch {
-    focus = {};
-  }
-
-  return { slides: ordered, focus };
+/** Kunci stabil dari daftar foto agar kueri fokus tidak berulang tanpa perlu. */
+function focusKey(photos: string[]): string {
+  return [...photos].sort().join("|");
 }
 
 /** Carousel utama dashboard: event, project IT, dan buku harian IT. */
 export function HomeCarousel() {
   const q = useQuery({ queryKey: ["home-carousel"], queryFn: loadSlides, staleTime: 60_000 });
   const base = useMemo(() => q.data?.slides ?? [], [q.data]);
-  const focusMap = useMemo(() => q.data?.focus ?? {}, [q.data]);
+
+  // Fokus wajah dimuat setelah slide tampil; crop menyesuaikan saat data siap.
+  const photosKey = focusKey(base.flatMap((s) => s.photos));
+  const focusQ = useQuery({
+    queryKey: ["home-carousel-focus", photosKey],
+    enabled: photosKey.length > 0,
+    staleTime: 300_000,
+    queryFn: async (): Promise<ImageFocusMap> => {
+      const images = photosKey
+        .split("|")
+        .filter(Boolean)
+        .map((p) => ({ key: p, url: slideImageSrc(p, 1200) }));
+      try {
+        return await getImageFocus({ data: { images } });
+      } catch {
+        return {};
+      }
+    },
+  });
+  const focusMap = useMemo(() => focusQ.data ?? {}, [focusQ.data]);
   const [slides, setSlides] = useState<Slide[]>([]);
   const [idx, setIdx] = useState(0);
   const idxRef = useRef(0);
@@ -283,7 +295,7 @@ export function HomeCarousel() {
   const photoOf = (s: Slide) => photoBySlide[s.id] ?? null;
 
   return (
-    <div className="glass-card relative h-[8cm] min-h-[8cm] lg:h-[14cm] lg:min-h-[14cm] overflow-hidden">
+    <div className="glass-card relative aspect-video w-full overflow-hidden">
       {slides.map((s, i) => {
         const photo = photoOf(s);
         return (
@@ -305,13 +317,14 @@ export function HomeCarousel() {
               style={{ backgroundImage: "var(--gradient-stat)", opacity: 0.35 }}
             />
           ) : null}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-background/10" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background/85 via-background/35 via-[25%] to-transparent to-[42%]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/40 via-transparent to-transparent" />
         </div>
         );
       })}
 
       {!slides.length ? (
-        <div className="grid h-full min-h-[8cm] lg:min-h-[14cm] place-items-center text-muted-foreground">
+        <div className="grid aspect-video w-full place-items-center text-muted-foreground">
           <ImageOff className="size-6" />
         </div>
       ) : null}
@@ -326,16 +339,28 @@ export function HomeCarousel() {
         />
       ) : null}
 
-      <div className="pointer-events-none relative z-20 flex h-full min-h-[8cm] lg:min-h-[14cm] flex-col justify-end p-6 sm:p-8">
+      <div className="pointer-events-none relative z-20 flex aspect-video w-full flex-col justify-end p-6 sm:p-8">
         {active ? (
           <>
-            <span className="w-fit rounded-full border border-primary/40 bg-background/60 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-accent uppercase backdrop-blur">
+            <span
+              className="w-fit rounded-full border border-primary/40 bg-background/70 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-accent uppercase shadow-lg backdrop-blur"
+              style={{ textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}
+            >
               {active.kind}
             </span>
-            <h2 className="mt-3 max-w-2xl text-2xl leading-tight font-bold sm:text-4xl">
-              <span className="gradient-text">{active.title}</span>
+            <h2
+              className="mt-3 max-w-2xl text-2xl leading-tight font-bold text-foreground sm:text-4xl"
+              style={{
+                textShadow: "0 2px 4px rgba(0,0,0,0.7), 0 4px 14px rgba(0,0,0,0.5)",
+                WebkitTextStroke: "0.5px rgba(0,0,0,0.35)",
+              }}
+            >
+              {active.title}
             </h2>
-            <p className="mt-2 line-clamp-2 max-w-xl text-sm text-muted-foreground">
+            <p
+              className="mt-2 line-clamp-2 max-w-xl text-sm font-medium text-foreground/90"
+              style={{ textShadow: "0 1px 3px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.5)" }}
+            >
               {active.subtitle}
             </p>
             {active.to ? (
@@ -343,7 +368,7 @@ export function HomeCarousel() {
                 to={active.to.to}
                 params={active.to.params}
                 search={{ from: "/" }}
-                className="pointer-events-auto mt-4 w-fit rounded-xl border border-border/70 bg-background/60 px-4 py-2 text-sm font-medium backdrop-blur transition-colors hover:border-primary/60 hover:text-foreground"
+                className="pointer-events-auto mt-4 w-fit rounded-xl border border-border/70 bg-background/70 px-4 py-2 text-sm font-medium shadow-lg backdrop-blur transition-colors hover:border-primary/60 hover:text-foreground"
               >
                 Lihat detail
               </Link>
@@ -357,7 +382,7 @@ export function HomeCarousel() {
               type="button"
               aria-label="Sebelumnya"
               onClick={() => setIdx((i) => (i - 1 + slides.length) % slides.length)}
-              className="grid size-8 place-items-center rounded-full border border-border/70 bg-background/60 backdrop-blur transition-colors hover:border-primary/60"
+              className="grid size-8 place-items-center rounded-full border border-border/70 bg-background/70 shadow-lg backdrop-blur transition-colors hover:border-primary/60"
             >
               <ChevronLeft className="size-4" />
             </button>
@@ -365,7 +390,7 @@ export function HomeCarousel() {
               type="button"
               aria-label="Berikutnya"
               onClick={() => setIdx((i) => (i + 1) % slides.length)}
-              className="grid size-8 place-items-center rounded-full border border-border/70 bg-background/60 backdrop-blur transition-colors hover:border-primary/60"
+              className="grid size-8 place-items-center rounded-full border border-border/70 bg-background/70 shadow-lg backdrop-blur transition-colors hover:border-primary/60"
             >
               <ChevronRight className="size-4" />
             </button>

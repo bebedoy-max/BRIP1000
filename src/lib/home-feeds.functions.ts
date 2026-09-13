@@ -87,7 +87,10 @@ export const getArticleContent = createServerFn({ method: "POST" })
 
 
 
+export const NEWS_CATEGORIES = ["Dunia", "Nasional", "Teknologi", "BRI", "Kebijakan"] as const;
+export type NewsCategory = (typeof NEWS_CATEGORIES)[number];
 export type NewsItem = { title: string; link: string; date: string | null; source: string };
+export type NewsByCategory = Record<NewsCategory, NewsItem[]>;
 
 const pick = (xml: string, tag: string) => {
   const m = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`).exec(xml);
@@ -99,19 +102,13 @@ const pick = (xml: string, tag: string) => {
 };
 
 /** Topik berita: perbankan & teknologi perbankan BRI, bisnis/keuangan, kebijakan BI/OJK, fintech global. */
-const NEWS_QUERIES = [
-  'when:7d ("Bank BRI" OR BBRI) (perbankan OR digital OR teknologi)',
-  "when:7d (Bank Indonesia OR OJK) kebijakan perbankan",
-  "when:3d berita bisnis keuangan Indonesia terkini",
-  "when:2d ekonomi Indonesia trending hari ini",
-  "when:3d fintech OR digital banking technology",
-];
-
-/** Cadangan topik umum bila kueri utama sepi. */
-const FALLBACK_QUERIES = [
-  "when:2d berita terkini Indonesia",
-  "when:2d pasar saham IHSG rupiah",
-];
+const NEWS_QUERIES: Record<NewsCategory, string[]> = {
+  Dunia: ["when:3d berita dunia ekonomi keuangan internasional", "when:3d global business markets"],
+  Nasional: ["when:2d berita nasional Indonesia terkini", "when:3d ekonomi Indonesia bisnis"],
+  Teknologi: ["when:3d teknologi digital AI fintech", "when:3d digital banking cybersecurity technology"],
+  BRI: ['when:7d "Bank BRI" OR BBRI', 'when:14d BRI perbankan digital UMKM'],
+  Kebijakan: ["when:7d Bank Indonesia OJK kebijakan perbankan", "when:7d pemerintah regulasi ekonomi keuangan"],
+};
 
 async function fetchGoogleNews(query: string, limit: number): Promise<NewsItem[]> {
   try {
@@ -153,18 +150,21 @@ function mergeUnique(lists: NewsItem[][]): NewsItem[] {
   return merged;
 }
 
-const NEWS_TARGET = 10;
+const NEWS_TARGET = 8;
 
 /** Berita perbankan, bisnis, keuangan & fintech — minimal 10 item, diutamakan yang isinya terbaca. */
-export const getNews = createServerFn({ method: "GET" }).handler(async () => {
-  let merged = mergeUnique(await Promise.all(NEWS_QUERIES.map((q) => fetchGoogleNews(q, 12))));
-  if (merged.length < NEWS_TARGET * 2) {
-    const extra = await Promise.all(FALLBACK_QUERIES.map((q) => fetchGoogleNews(q, 12)));
-    merged = mergeUnique([merged, ...extra]);
-  }
-
+export const getNews = createServerFn({ method: "GET" }).handler(async (): Promise<NewsByCategory> => {
   const { keepReadableCached } = await import("./news-readable.server");
-  return keepReadableCached(merged.slice(0, 40), 12);
+  const entries = await Promise.all(
+    NEWS_CATEGORIES.map(async (category) => {
+      const merged = mergeUnique(
+        await Promise.all(NEWS_QUERIES[category].map((query) => fetchGoogleNews(query, 12))),
+      );
+      const items = await keepReadableCached(merged.slice(0, 24), NEWS_TARGET, 8_000, category);
+      return [category, items] as const;
+    }),
+  );
+  return Object.fromEntries(entries) as NewsByCategory;
 });
 
 
