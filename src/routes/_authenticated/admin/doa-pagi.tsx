@@ -132,9 +132,9 @@ function DayMark({ state, anim }: { state: "ok" | "no" | "empty" | "blank"; anim
 /** Ukuran & pergeseran logo sesuai pengaturan admin. */
 function logoStyle(l: DoaLogo): CSSProperties {
   return {
-    height: `${l.height}px`,
-    maxHeight: `${l.height}px`,
-    transform: `translate(${l.x}px, ${l.y}px)`,
+    height: `${l.height * 1.5}px`,
+    maxHeight: `${l.height * 1.5}px`,
+    transform: `translate(${l.x * 1.5}px, ${l.y * 1.5}px)`,
   };
 }
 

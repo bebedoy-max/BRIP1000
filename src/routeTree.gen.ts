@@ -62,6 +62,7 @@ import { Route as AuthenticatedAdminEventIndexRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminEventIdRouteImport } from './routes/_authenticated/admin/event/$id'
 import { Route as AuthenticatedAdminToolsIndexRouteImport } from './routes/_authenticated/admin/tools.index'
 import { Route as AuthenticatedAdminToolsAbsensiRouteImport } from './routes/_authenticated/admin/tools.absensi'
+import { Route as AuthenticatedAdminToolsDoaPagiRouteImport } from './routes/_authenticated/admin/tools.doa-pagi'
 import { Route as AuthenticatedAdminToolsNominasiRouteImport } from './routes/_authenticated/admin/tools.nominasi'
 import { Route as AuthenticatedAdminToolsUndianRouteImport } from './routes/_authenticated/admin/tools.undian'
 import { Route as AuthenticatedAdminToolsVoteRouteImport } from './routes/_authenticated/admin/tools.vote'
@@ -370,6 +371,12 @@ const AuthenticatedAdminToolsAbsensiRoute =
     path: '/absensi',
     getParentRoute: () => AuthenticatedAdminToolsRoute,
   } as any)
+const AuthenticatedAdminToolsDoaPagiRoute =
+  AuthenticatedAdminToolsDoaPagiRouteImport.update({
+    id: '/doa-pagi',
+    path: '/doa-pagi',
+    getParentRoute: () => AuthenticatedAdminToolsRoute,
+  } as any)
 const AuthenticatedAdminToolsNominasiRoute =
   AuthenticatedAdminToolsNominasiRouteImport.update({
     id: '/nominasi',
@@ -553,6 +560,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/event/$id': typeof AuthenticatedAdminEventIdRoute
   '/admin/tools/absensi': typeof AuthenticatedAdminToolsAbsensiRouteWithChildren
+  '/admin/tools/doa-pagi': typeof AuthenticatedAdminToolsDoaPagiRoute
   '/admin/tools/nominasi': typeof AuthenticatedAdminToolsNominasiRouteWithChildren
   '/admin/tools/undian': typeof AuthenticatedAdminToolsUndianRouteWithChildren
   '/admin/tools/vote': typeof AuthenticatedAdminToolsVoteRouteWithChildren
@@ -627,6 +635,7 @@ export interface FileRoutesByTo {
   '/api/zoom/callback': typeof ApiZoomCallbackRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/event/$id': typeof AuthenticatedAdminEventIdRoute
+  '/admin/tools/doa-pagi': typeof AuthenticatedAdminToolsDoaPagiRoute
   '/api/public/companion/delete-event': typeof ApiPublicCompanionDeleteEventRoute
   '/api/public/companion/drive-status': typeof ApiPublicCompanionDriveStatusRoute
   '/api/public/companion/finalize': typeof ApiPublicCompanionFinalizeRoute
@@ -701,6 +710,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/event/$id': typeof AuthenticatedAdminEventIdRoute
   '/_authenticated/admin/tools/absensi': typeof AuthenticatedAdminToolsAbsensiRouteWithChildren
+  '/_authenticated/admin/tools/doa-pagi': typeof AuthenticatedAdminToolsDoaPagiRoute
   '/_authenticated/admin/tools/nominasi': typeof AuthenticatedAdminToolsNominasiRouteWithChildren
   '/_authenticated/admin/tools/undian': typeof AuthenticatedAdminToolsUndianRouteWithChildren
   '/_authenticated/admin/tools/vote': typeof AuthenticatedAdminToolsVoteRouteWithChildren
@@ -779,6 +789,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/admin/event/$id'
     | '/admin/tools/absensi'
+    | '/admin/tools/doa-pagi'
     | '/admin/tools/nominasi'
     | '/admin/tools/undian'
     | '/admin/tools/vote'
@@ -853,6 +864,7 @@ export interface FileRouteTypes {
     | '/api/zoom/callback'
     | '/admin'
     | '/admin/event/$id'
+    | '/admin/tools/doa-pagi'
     | '/api/public/companion/delete-event'
     | '/api/public/companion/drive-status'
     | '/api/public/companion/finalize'
@@ -926,6 +938,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/'
     | '/_authenticated/admin/event/$id'
     | '/_authenticated/admin/tools/absensi'
+    | '/_authenticated/admin/tools/doa-pagi'
     | '/_authenticated/admin/tools/nominasi'
     | '/_authenticated/admin/tools/undian'
     | '/_authenticated/admin/tools/vote'
@@ -1353,6 +1366,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminToolsAbsensiRouteImport
       parentRoute: typeof AuthenticatedAdminToolsRoute
     }
+    '/_authenticated/admin/tools/doa-pagi': {
+      id: '/_authenticated/admin/tools/doa-pagi'
+      path: '/doa-pagi'
+      fullPath: '/admin/tools/doa-pagi'
+      preLoaderRoute: typeof AuthenticatedAdminToolsDoaPagiRouteImport
+      parentRoute: typeof AuthenticatedAdminToolsRoute
+    }
     '/_authenticated/admin/tools/nominasi': {
       id: '/_authenticated/admin/tools/nominasi'
       path: '/nominasi'
@@ -1600,6 +1620,7 @@ const AuthenticatedAdminToolsZoomRouteWithChildren =
 
 interface AuthenticatedAdminToolsRouteChildren {
   AuthenticatedAdminToolsAbsensiRoute: typeof AuthenticatedAdminToolsAbsensiRouteWithChildren
+  AuthenticatedAdminToolsDoaPagiRoute: typeof AuthenticatedAdminToolsDoaPagiRoute
   AuthenticatedAdminToolsNominasiRoute: typeof AuthenticatedAdminToolsNominasiRouteWithChildren
   AuthenticatedAdminToolsUndianRoute: typeof AuthenticatedAdminToolsUndianRouteWithChildren
   AuthenticatedAdminToolsVoteRoute: typeof AuthenticatedAdminToolsVoteRouteWithChildren
@@ -1611,6 +1632,7 @@ const AuthenticatedAdminToolsRouteChildren: AuthenticatedAdminToolsRouteChildren
   {
     AuthenticatedAdminToolsAbsensiRoute:
       AuthenticatedAdminToolsAbsensiRouteWithChildren,
+    AuthenticatedAdminToolsDoaPagiRoute: AuthenticatedAdminToolsDoaPagiRoute,
     AuthenticatedAdminToolsNominasiRoute:
       AuthenticatedAdminToolsNominasiRouteWithChildren,
     AuthenticatedAdminToolsUndianRoute:
