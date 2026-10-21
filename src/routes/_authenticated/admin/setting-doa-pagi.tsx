@@ -24,8 +24,6 @@ import {
   defaultDoaLogos,
   defaultKehadiranOptions,
   doaLogoLabels,
-  formatKehadiranOption,
-  parseKehadiranOption,
   isQrisFilled,
   normalizeDoaLogos,
   toIsoDate,
@@ -34,6 +32,7 @@ import {
   type DoaLogoSettings,
   type DoaPagiSection,
   type DoaRotationSettings,
+  type KehadiranOption,
 } from "@/lib/doa-pagi-ui";
 import {
   deleteDoaPagiSection,
@@ -246,22 +245,22 @@ function LogoSettings() {
   );
 }
 
-/** Pengaturan pilihan kolom kehadiran: format "[kode]Label". */
+/** Pengaturan pilihan kolom kehadiran: form tambah di atas, kartu pilihan di bawah. */
 function KehadiranSettings() {
   const qc = useQueryClient();
   const q = useQuery({
     queryKey: ["doa-pagi", "kehadiran-options"],
     queryFn: () => getDoaPagiKehadiranOptions(),
   });
-  const [draft, setDraft] = useState<string[] | null>(null);
-  const rows = draft ?? (q.data?.options ?? defaultKehadiranOptions).map(formatKehadiranOption);
+  const [draft, setDraft] = useState<KehadiranOption[] | null>(null);
+  const [newKode, setNewKode] = useState("");
+  const [newLabel, setNewLabel] = useState("");
+  const options = draft ?? q.data?.options ?? defaultKehadiranOptions;
 
   const save = useMutation({
-    mutationFn: (values: string[]) =>
+    mutationFn: (values: KehadiranOption[]) =>
       saveDoaPagiKehadiranOptions({
-        data: {
-          options: values.map(parseKehadiranOption).filter((o) => o.label.trim().length > 0),
-        },
+        data: { options: values.filter((o) => o.label.trim().length > 0) },
       }),
     onSuccess: async () => {
       toast.success("Pilihan kehadiran tersimpan.");
@@ -271,8 +270,28 @@ function KehadiranSettings() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  function setRow(i: number, value: string) {
-    setDraft(rows.map((r, idx) => (idx === i ? value : r)));
+  function patch(i: number, part: Partial<KehadiranOption>) {
+    setDraft(options.map((o, idx) => (idx === i ? { ...o, ...part } : o)));
+  }
+
+  function add() {
+    const label = newLabel.trim();
+    const shortcut = newKode.trim().toLowerCase();
+    if (!label) {
+      toast.error("Isi pilihan wajib diisi.");
+      return;
+    }
+    if (options.some((o) => o.label.toLowerCase() === label.toLowerCase())) {
+      toast.error("Pilihan tersebut sudah ada.");
+      return;
+    }
+    if (shortcut && options.some((o) => o.shortcut.toLowerCase() === shortcut)) {
+      toast.error(`Kode "${shortcut}" sudah dipakai.`);
+      return;
+    }
+    setDraft([...options, { shortcut, label }]);
+    setNewKode("");
+    setNewLabel("");
   }
 
   return (
@@ -283,13 +302,10 @@ function KehadiranSettings() {
             <ListChecks className="size-4" /> Pilihan Kolom Kehadiran
           </h2>
           <p className="text-sm text-muted-foreground">
-            Tulis dengan format <span className="font-mono">[kode]Isi pilihan</span>, contoh{" "}
-            <span className="font-mono">[bh]Belum Hadir</span> atau{" "}
-            <span className="font-mono">[un]Di BRI Unit</span>. Kode yang diketik di kolom Absen
-            Qris lalu Enter akan otomatis mengisi kolom Kehadiran.
+            Kode yang diketik di kolom Absen Qris lalu Enter akan otomatis mengisi kolom Kehadiran.
           </p>
         </div>
-        <Button onClick={() => save.mutate(rows)} disabled={save.isPending}>
+        <Button onClick={() => save.mutate(options)} disabled={save.isPending || !draft}>
           {save.isPending ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
@@ -299,33 +315,85 @@ function KehadiranSettings() {
         </Button>
       </div>
 
+      <form
+        className="flex flex-wrap items-end gap-3 rounded-2xl border border-input bg-muted/30 p-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          add();
+        }}
+      >
+        <div className="w-28">
+          <Label htmlFor="kh-kode" className="text-xs">
+            Kode
+          </Label>
+          <Input
+            id="kh-kode"
+            value={newKode}
+            maxLength={12}
+            placeholder="bh"
+            onChange={(e) => setNewKode(e.target.value)}
+          />
+        </div>
+        <div className="min-w-48 flex-1">
+          <Label htmlFor="kh-label" className="text-xs">
+            Isi Pilihan Kehadiran
+          </Label>
+          <Input
+            id="kh-label"
+            value={newLabel}
+            maxLength={40}
+            placeholder="contoh: Belum Hadir"
+            onChange={(e) => setNewLabel(e.target.value)}
+          />
+        </div>
+        <Button type="submit" variant="secondary">
+          <Plus className="size-4" /> Tambah
+        </Button>
+      </form>
+
       {q.isLoading ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" /> Memuat pilihan kehadiran…
         </p>
       ) : (
-        <div className="space-y-2">
-          {rows.map((value, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <Input
-                value={value}
-                placeholder="[kode]Isi pilihan"
-                onChange={(e) => setRow(i, e.target.value)}
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Hapus pilihan"
-                onClick={() => setDraft(rows.filter((_, idx) => idx !== i))}
+        <>
+          <p className="text-xs text-muted-foreground">
+            {options.length} pilihan{draft ? " · ada perubahan belum disimpan" : ""}
+          </p>
+          <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(17rem,1fr))]">
+            {options.map((o, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-2 rounded-2xl border border-input bg-background/60 p-2"
               >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
-          ))}
-          <Button variant="outline" onClick={() => setDraft([...rows, ""])}>
-            <Plus className="size-4" /> Tambah Pilihan
-          </Button>
-        </div>
+                <Input
+                  aria-label="Kode"
+                  value={o.shortcut}
+                  maxLength={12}
+                  placeholder="kode"
+                  className="h-9 w-16 shrink-0 px-2 text-center font-mono text-xs"
+                  onChange={(e) => patch(i, { shortcut: e.target.value.trim().toLowerCase() })}
+                />
+                <Input
+                  aria-label="Isi pilihan"
+                  value={o.label}
+                  maxLength={40}
+                  className="h-9 min-w-0 flex-1"
+                  onChange={(e) => patch(i, { label: e.target.value })}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 shrink-0"
+                  aria-label={`Hapus ${o.label}`}
+                  onClick={() => setDraft(options.filter((_, idx) => idx !== i))}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
