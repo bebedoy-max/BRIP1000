@@ -30,7 +30,6 @@ import {
   normalizeDoaLogos,
   toIsoDate,
   weekdayNames,
-
   type DoaLogoKey,
   type DoaLogoSettings,
   type DoaPagiSection,
@@ -147,7 +146,6 @@ function LogoSettings() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <ResetDataButton />
           <Button onClick={() => save.mutate(logos)} disabled={save.isPending}>
             {save.isPending ? (
               <Loader2 className="size-4 animate-spin" />
@@ -262,9 +260,7 @@ function KehadiranSettings() {
     mutationFn: (values: string[]) =>
       saveDoaPagiKehadiranOptions({
         data: {
-          options: values
-            .map(parseKehadiranOption)
-            .filter((o) => o.label.trim().length > 0),
+          options: values.map(parseKehadiranOption).filter((o) => o.label.trim().length > 0),
         },
       }),
     onSuccess: async () => {
@@ -748,7 +744,6 @@ function ReportPanel({ ukers }: { ukers: { id: string; nama: string }[] }) {
 
   const { from, to } = period;
 
-
   const q = useQuery({
     queryKey: ["doa-pagi", "report", activeUkerId, from, to],
     enabled: !!activeUkerId,
@@ -803,7 +798,8 @@ function ReportPanel({ ukers }: { ukers: { id: string; nama: string }[] }) {
   const periodeLabel = `${from} s/d ${to}`;
   const fileBase = `laporan-absensi-${(activeUker?.nama ?? "uker").replace(/\s+/g, "-").toLowerCase()}-${from}_${to}`;
   const headers = ["Nama Pekerja", "Jabatan", "Izin", "Sakit", "Terlambat", "Tanpa Ket."];
-  const bodyRows = () => rows.map((r) => [r.nama, r.jabatan, r.izin, r.sakit, r.terlambat, r.tanpa]);
+  const bodyRows = () =>
+    rows.map((r) => [r.nama, r.jabatan, r.izin, r.sakit, r.terlambat, r.tanpa]);
 
   function saveBlob(blob: Blob, filename: string) {
     const url = URL.createObjectURL(blob);
@@ -935,12 +931,9 @@ function ReportPanel({ ukers }: { ukers: { id: string; nama: string }[] }) {
         doc.setFontSize(8);
         doc.setTextColor(130, 138, 150);
         doc.text("BRI BO Pringsewu — SuperIT Apps", 40, H - 20);
-        doc.text(
-          `Dicetak ${new Date().toLocaleString("id-ID")}`,
-          W - 40,
-          H - 20,
-          { align: "right" },
-        );
+        doc.text(`Dicetak ${new Date().toLocaleString("id-ID")}`, W - 40, H - 20, {
+          align: "right",
+        });
       },
     });
 
@@ -954,15 +947,11 @@ function ReportPanel({ ukers }: { ukers: { id: string; nama: string }[] }) {
     else downloadCsv();
   }
 
-
   return (
     <div className="space-y-4">
       <div className="glass-card flex flex-wrap items-end gap-3 p-4">
         <div className="min-w-52 flex-1">
-          <Label
-            htmlFor="rep-uker"
-            className="pl-4 text-xs font-bold uppercase tracking-wide"
-          >
+          <Label htmlFor="rep-uker" className="pl-4 text-xs font-bold uppercase tracking-wide">
             Unit Kerja
           </Label>
           <select
@@ -992,10 +981,14 @@ function ReportPanel({ ukers }: { ukers: { id: string; nama: string }[] }) {
             <option value="csv">CSV</option>
           </select>
         </div>
-        <Button type="button" className="h-10 rounded-full px-6" onClick={download} disabled={!rows.length}>
+        <Button
+          type="button"
+          className="h-10 rounded-full px-6"
+          onClick={download}
+          disabled={!rows.length}
+        >
           Download Laporan
         </Button>
-
       </div>
 
       <div className="glass-card space-y-3 p-4">
@@ -1031,10 +1024,14 @@ function ReportPanel({ ukers }: { ukers: { id: string; nama: string }[] }) {
                 {rows.map((r) => (
                   <tr key={r.nama}>
                     <td className="rounded-full bg-muted/50 px-4 py-2 font-medium">{r.nama}</td>
-                    <td className="rounded-full bg-muted/50 px-4 py-2 text-muted-foreground">{r.jabatan}</td>
+                    <td className="rounded-full bg-muted/50 px-4 py-2 text-muted-foreground">
+                      {r.jabatan}
+                    </td>
                     <td className="rounded-full bg-muted/40 px-3 py-2 text-center">{r.izin}</td>
                     <td className="rounded-full bg-muted/40 px-3 py-2 text-center">{r.sakit}</td>
-                    <td className="rounded-full bg-muted/40 px-3 py-2 text-center">{r.terlambat}</td>
+                    <td className="rounded-full bg-muted/40 px-3 py-2 text-center">
+                      {r.terlambat}
+                    </td>
                     <td className="rounded-full bg-muted/40 px-3 py-2 text-center">{r.tanpa}</td>
                   </tr>
                 ))}
@@ -1048,7 +1045,6 @@ function ReportPanel({ ukers }: { ukers: { id: string; nama: string }[] }) {
     </div>
   );
 }
-
 
 export const Route = createFileRoute("/_authenticated/admin/setting-doa-pagi")({
   head: () => ({
@@ -1083,6 +1079,28 @@ const emptyForm = (ukerId: string, ukerNama: string, urutan: number): Form => ({
   pekerja: [],
 });
 
+type TabKey = "bagian" | "rotasi" | "kehadiran" | "logo" | "laporan" | "qris";
+
+/** Menu tab dikelompokkan: pengaturan di kiri, laporan di kanan. */
+const tabGroups: { title: string; tabs: { key: TabKey; label: string }[] }[] = [
+  {
+    title: "Pengaturan",
+    tabs: [
+      { key: "bagian", label: "Bagian & Pekerja" },
+      { key: "rotasi", label: "Rotasi Harian" },
+      { key: "kehadiran", label: "Pilihan Kehadiran" },
+      { key: "logo", label: "Logo" },
+    ],
+  },
+  {
+    title: "Laporan",
+    tabs: [
+      { key: "laporan", label: "Absensi" },
+      { key: "qris", label: "QRIS" },
+    ],
+  },
+];
+
 function Page() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["doa-pagi", "settings"], queryFn: () => getDoaPagiSettings() });
@@ -1101,7 +1119,7 @@ function Page() {
     [q.data, activeUkerId],
   );
 
-  const [tab, setTab] = useState<"setting" | "laporan" | "qris">("setting");
+  const [tab, setTab] = useState<TabKey>("bagian");
   const [form, setForm] = useState<Form | null>(null);
   const [jabatanFilter, setJabatanFilter] = useState("");
 
@@ -1121,8 +1139,6 @@ function Page() {
     () => ukerEmployees.filter((e) => !jabatanFilter || e.jabatan === jabatanFilter),
     [ukerEmployees, jabatanFilter],
   );
-
-
 
   const save = useMutation({
     mutationFn: (f: Form) => saveDoaPagiSection({ data: f }),
@@ -1165,276 +1181,298 @@ function Page() {
             <Sunrise className="size-6" /> Absensi Doa Pagi
           </h1>
           <p className="text-sm text-muted-foreground">
-            Kelola bagian per unit kerja: nomor urut, nama bagian, deskripsi, keterangan, dan daftar
-            pekerja yang tampil pada layar absensi.
+            Pilih menu di bawah: atur bagian, rotasi, kehadiran, dan logo, atau lihat laporan.
           </p>
         </div>
 
-        <div className="inline-flex rounded-full border border-input bg-muted/40 p-1">
-          {(["setting", "laporan", "qris"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={`rounded-full px-5 py-2 text-sm font-medium transition ${
-                tab === t
-                  ? "bg-primary text-primary-foreground shadow"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t === "setting"
-                ? "Pengaturan"
-                : t === "laporan"
-                  ? "Laporan Absensi"
-                  : "Laporan QRIS"}
-            </button>
+        <nav
+          aria-label="Menu absensi doa pagi"
+          className="flex flex-wrap items-end gap-x-6 gap-y-3 border-b border-input pb-3"
+        >
+          {tabGroups.map((g) => (
+            <div key={g.title} className="space-y-1.5">
+              <p className="pl-2 text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
+                {g.title}
+              </p>
+              <div className="flex flex-wrap gap-1 rounded-full border border-input bg-muted/40 p-1">
+                {g.tabs.map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    aria-current={tab === t.key ? "page" : undefined}
+                    onClick={() => setTab(t.key)}
+                    className={`rounded-full px-4 py-1.5 text-sm font-medium whitespace-nowrap transition ${
+                      tab === t.key
+                        ? "bg-primary text-primary-foreground shadow"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
-        </div>
+          <div className="ml-auto">
+            <ResetDataButton />
+          </div>
+        </nav>
 
         {tab === "laporan" ? (
           <ReportPanel ukers={ukers} />
         ) : tab === "qris" ? (
           <QrisReportPanel ukers={ukers} />
-        ) : (
-
-        <>
-        <LogoSettings />
-        <KehadiranSettings />
-        <RotationSettings />
-
-        {q.isLoading ? (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Memuat pengaturan…
-          </p>
+        ) : tab === "logo" ? (
+          <LogoSettings />
+        ) : tab === "kehadiran" ? (
+          <KehadiranSettings />
+        ) : tab === "rotasi" ? (
+          <RotationSettings />
         ) : (
           <>
-            <div className="glass-card flex flex-wrap items-end gap-3 p-4">
-              <div className="min-w-56 flex-1">
-                <Label htmlFor="uker">Unit Kerja</Label>
-                <select
-                  id="uker"
-                  value={activeUkerId}
-                  onChange={(e) => {
-                    setUkerId(e.target.value);
-                    setForm(null);
-                    setJabatanFilter("");
-                  }}
+            {q.isLoading ? (
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> Memuat pengaturan…
+              </p>
+            ) : (
+              <>
+                <div className="glass-card flex flex-wrap items-end gap-3 p-4">
+                  <div className="min-w-56 flex-1">
+                    <Label htmlFor="uker">Unit Kerja</Label>
+                    <select
+                      id="uker"
+                      value={activeUkerId}
+                      onChange={(e) => {
+                        setUkerId(e.target.value);
+                        setForm(null);
+                        setJabatanFilter("");
+                      }}
 
-                  className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  {ukers.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.nama}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Button onClick={startNew} disabled={!activeUker}>
-                <Plus className="size-4" /> Bagian Baru
-              </Button>
-            </div>
-
-            {form ? (
-              <div className="glass-card space-y-4 p-5">
-                <div className="flex items-center justify-between">
-                  <h2 className="font-semibold">{form.id ? "Ubah Bagian" : "Bagian Baru"}</h2>
-                  <Button variant="ghost" size="icon" onClick={() => setForm(null)} aria-label="Tutup">
-                    <X className="size-4" />
+                      className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      {ukers.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.nama}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <Button onClick={startNew} disabled={!activeUker}>
+                    <Plus className="size-4" /> Bagian Baru
                   </Button>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-[120px_minmax(0,1fr)]">
-                  <div>
-                    <Label htmlFor="urutan">Nomor Urut</Label>
-                    <Input
-                      id="urutan"
-                      type="number"
-                      min={1}
-                      value={form.urutan}
-                      onChange={(e) => setForm({ ...form, urutan: Number(e.target.value) || 1 })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="nama">Nama Bagian</Label>
-                    <Input
-                      id="nama"
-                      value={form.nama}
-                      maxLength={80}
-                      placeholder="contoh: ADK"
-                      onChange={(e) => setForm({ ...form, nama: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <Label htmlFor="deskripsi">Deskripsi</Label>
-                    <Textarea
-                      id="deskripsi"
-                      value={form.deskripsi}
-                      maxLength={500}
-                      onChange={(e) => setForm({ ...form, deskripsi: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="keterangan">Keterangan</Label>
-                    <Textarea
-                      id="keterangan"
-                      value={form.keterangan}
-                      maxLength={500}
-                      onChange={(e) => setForm({ ...form, keterangan: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <div>
-                      <Label htmlFor="filter-jabatan">Pilih Pekerja (Filter Jabatan)</Label>
-                      <select
-                        id="filter-jabatan"
-                        value={jabatanFilter}
-                        onChange={(e) => setJabatanFilter(e.target.value)}
-                        className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                      >
-                        <option value="">Semua jabatan</option>
-                        {jabatanOptions.map((j) => (
-                          <option key={j} value={j}>
-                            {j}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="max-h-72 space-y-1 overflow-y-auto rounded-md border border-input p-2">
-                      {visibleEmployees.length ? (
-                        visibleEmployees.map((emp) => {
-                          const checked = form.pekerja.includes(emp.nama);
-                          return (
-                            <label
-                              key={`${emp.nama}-${emp.jabatan}`}
-                              className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted/50"
-                            >
-                              <input
-                                type="checkbox"
-                                className="size-4 accent-primary"
-                                checked={checked}
-                                onChange={(e) =>
-                                  setForm({
-                                    ...form,
-                                    pekerja: e.target.checked
-                                      ? [...form.pekerja, emp.nama]
-                                      : form.pekerja.filter((x) => x !== emp.nama),
-                                  })
-                                }
-                              />
-                              <span className="flex-1">{emp.nama}</span>
-                              <span className="text-xs text-muted-foreground">{emp.jabatan}</span>
-                            </label>
-                          );
-                        })
-                      ) : (
-                        <p className="px-2 py-1.5 text-sm text-muted-foreground">
-                          Belum ada data pekerja pada unit kerja ini.
-                        </p>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Hanya pegawai unit kerja <strong>{activeUker?.nama ?? "-"}</strong>.
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Pekerja Terdaftar di Bagian Ini ({form.pekerja.length})</Label>
-                    <div className="max-h-[21.5rem] space-y-1 overflow-y-auto rounded-md border border-input p-2">
-                      {form.pekerja.length ? (
-                        form.pekerja.map((p, i) => (
-                          <div
-                            key={p}
-                            className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted/50"
-                          >
-                            <Badge variant="secondary" className="min-w-7 justify-center">
-                              {i + 1}
-                            </Badge>
-                            <span className="flex-1">{p}</span>
-                            <button
-                              type="button"
-                              aria-label={`Hapus ${p}`}
-                              className="text-muted-foreground hover:text-destructive"
-                              onClick={() =>
-                                setForm({ ...form, pekerja: form.pekerja.filter((x) => x !== p) })
-                              }
-                            >
-                              <X className="size-4" />
-                            </button>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="px-2 py-1.5 text-sm text-muted-foreground">
-                          Belum ada pekerja dipilih. Ceklis pekerja di sebelah kiri.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-
-
-                <Button onClick={submit} disabled={save.isPending}>
-                  {save.isPending ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Save className="size-4" />
-                  )}
-                  Simpan
-                </Button>
-              </div>
-            ) : null}
-
-            <div className="space-y-3">
-              {sections.length ? (
-                sections.map((s) => (
-                  <div key={s.id} className="glass-card flex flex-wrap items-start gap-4 p-4">
-                    <div className="flex size-10 items-center justify-center rounded-xl bg-muted font-bold">
-                      {s.urutan}
-                    </div>
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <h3 className="font-semibold">{s.nama}</h3>
-                      {s.deskripsi ? (
-                        <p className="text-sm text-muted-foreground">{s.deskripsi}</p>
-                      ) : null}
-                      {s.keterangan ? (
-                        <p className="text-xs text-muted-foreground">{s.keterangan}</p>
-                      ) : null}
-                      <p className="text-xs text-muted-foreground">
-                        {s.pekerja.length} pekerja
-                        {s.pekerja.length ? `: ${s.pekerja.join(", ")}` : ""}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="secondary" onClick={() => setForm({ ...s })}>
-                        Ubah
-                      </Button>
+                {form ? (
+                  <div className="glass-card space-y-4 p-5">
+                    <div className="flex items-center justify-between">
+                      <h2 className="font-semibold">{form.id ? "Ubah Bagian" : "Bagian Baru"}</h2>
                       <Button
                         variant="ghost"
                         size="icon"
-                        aria-label={`Hapus bagian ${s.nama}`}
-                        onClick={() => remove.mutate(s.id)}
+                        onClick={() => setForm(null)}
+                        aria-label="Tutup"
                       >
-                        <Trash2 className="size-4" />
+                        <X className="size-4" />
                       </Button>
                     </div>
+
+                    <div className="grid gap-4 sm:grid-cols-[120px_minmax(0,1fr)]">
+                      <div>
+                        <Label htmlFor="urutan">Nomor Urut</Label>
+                        <Input
+                          id="urutan"
+                          type="number"
+                          min={1}
+                          value={form.urutan}
+                          onChange={(e) =>
+                            setForm({ ...form, urutan: Number(e.target.value) || 1 })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="nama">Nama Bagian</Label>
+                        <Input
+                          id="nama"
+                          value={form.nama}
+                          maxLength={80}
+                          placeholder="contoh: ADK"
+                          onChange={(e) => setForm({ ...form, nama: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <Label htmlFor="deskripsi">Deskripsi</Label>
+                        <Textarea
+                          id="deskripsi"
+                          value={form.deskripsi}
+                          maxLength={500}
+                          onChange={(e) => setForm({ ...form, deskripsi: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="keterangan">Keterangan</Label>
+                        <Textarea
+                          id="keterangan"
+                          value={form.keterangan}
+                          maxLength={500}
+                          onChange={(e) => setForm({ ...form, keterangan: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <div>
+                          <Label htmlFor="filter-jabatan">Pilih Pekerja (Filter Jabatan)</Label>
+                          <select
+                            id="filter-jabatan"
+                            value={jabatanFilter}
+                            onChange={(e) => setJabatanFilter(e.target.value)}
+                            className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                          >
+                            <option value="">Semua jabatan</option>
+                            {jabatanOptions.map((j) => (
+                              <option key={j} value={j}>
+                                {j}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="max-h-72 space-y-1 overflow-y-auto rounded-md border border-input p-2">
+                          {visibleEmployees.length ? (
+                            visibleEmployees.map((emp) => {
+                              const checked = form.pekerja.includes(emp.nama);
+                              return (
+                                <label
+                                  key={`${emp.nama}-${emp.jabatan}`}
+                                  className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted/50"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    className="size-4 accent-primary"
+                                    checked={checked}
+                                    onChange={(e) =>
+                                      setForm({
+                                        ...form,
+                                        pekerja: e.target.checked
+                                          ? [...form.pekerja, emp.nama]
+                                          : form.pekerja.filter((x) => x !== emp.nama),
+                                      })
+                                    }
+                                  />
+                                  <span className="flex-1">{emp.nama}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {emp.jabatan}
+                                  </span>
+                                </label>
+                              );
+                            })
+                          ) : (
+                            <p className="px-2 py-1.5 text-sm text-muted-foreground">
+                              Belum ada data pekerja pada unit kerja ini.
+                            </p>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Hanya pegawai unit kerja <strong>{activeUker?.nama ?? "-"}</strong>.
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Pekerja Terdaftar di Bagian Ini ({form.pekerja.length})</Label>
+                        <div className="max-h-[21.5rem] space-y-1 overflow-y-auto rounded-md border border-input p-2">
+                          {form.pekerja.length ? (
+                            form.pekerja.map((p, i) => (
+                              <div
+                                key={p}
+                                className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted/50"
+                              >
+                                <Badge variant="secondary" className="min-w-7 justify-center">
+                                  {i + 1}
+                                </Badge>
+                                <span className="flex-1">{p}</span>
+                                <button
+                                  type="button"
+                                  aria-label={`Hapus ${p}`}
+                                  className="text-muted-foreground hover:text-destructive"
+                                  onClick={() =>
+                                    setForm({
+                                      ...form,
+                                      pekerja: form.pekerja.filter((x) => x !== p),
+                                    })
+                                  }
+                                >
+                                  <X className="size-4" />
+                                </button>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="px-2 py-1.5 text-sm text-muted-foreground">
+                              Belum ada pekerja dipilih. Ceklis pekerja di sebelah kiri.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button onClick={submit} disabled={save.isPending}>
+                      {save.isPending ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Save className="size-4" />
+                      )}
+                      Simpan
+                    </Button>
                   </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Belum ada bagian untuk unit kerja ini.
-                </p>
-              )}
-            </div>
+                ) : null}
+
+                <div className="space-y-3">
+                  {sections.length ? (
+                    sections.map((s) => (
+                      <div key={s.id} className="glass-card flex flex-wrap items-start gap-4 p-4">
+                        <div className="flex size-10 items-center justify-center rounded-xl bg-muted font-bold">
+                          {s.urutan}
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <h3 className="font-semibold">{s.nama}</h3>
+                          {s.deskripsi ? (
+                            <p className="text-sm text-muted-foreground">{s.deskripsi}</p>
+                          ) : null}
+                          {s.keterangan ? (
+                            <p className="text-xs text-muted-foreground">{s.keterangan}</p>
+                          ) : null}
+                          <p className="text-xs text-muted-foreground">
+                            {s.pekerja.length} pekerja
+                            {s.pekerja.length ? `: ${s.pekerja.join(", ")}` : ""}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="secondary" onClick={() => setForm({ ...s })}>
+                            Ubah
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Hapus bagian ${s.nama}`}
+                            onClick={() => remove.mutate(s.id)}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Belum ada bagian untuk unit kerja ini.
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
           </>
-        )}
-        </>
         )}
       </div>
     </AdminPage>
