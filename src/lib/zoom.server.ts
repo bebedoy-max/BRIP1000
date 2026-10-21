@@ -11,7 +11,12 @@ export type ZoomAccount = {
   is_active: boolean;
 };
 
-export const ZOOM_SCOPES = "meeting:write meeting:read user:read";
+/**
+ * Scope yang harus diaktifkan pada Zoom App (Marketplace → Scopes). Token terikat pada
+ * scope saat otorisasi, jadi setelah menambah scope, akun harus dihubungkan ulang.
+ */
+export const ZOOM_SCOPES =
+  "meeting:write:meeting meeting:read:meeting meeting:update:meeting meeting:delete:meeting user:read:user";
 
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -54,7 +59,9 @@ export async function saveAccount(input: {
     updated_at: new Date().toISOString(),
   };
   if (existing) {
-    const patch = payload.client_secret ? payload : { ...payload, client_secret: existing.client_secret };
+    const patch = payload.client_secret
+      ? payload
+      : { ...payload, client_secret: existing.client_secret };
     const { error } = await db.from("zoom_accounts").update(patch).eq("id", existing.id);
     if (error) throw new Error(error.message);
     return existing.id as string;
@@ -95,7 +102,11 @@ async function tokenRequest(acc: ZoomAccount, body: URLSearchParams) {
 /** Tukar authorization code jadi refresh token (dipakai route callback). */
 export async function exchangeCode(accountId: string, code: string, redirectUri: string) {
   const db = await admin();
-  const { data, error } = await db.from("zoom_accounts").select("*").eq("id", accountId).maybeSingle();
+  const { data, error } = await db
+    .from("zoom_accounts")
+    .select("*")
+    .eq("id", accountId)
+    .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Akun Zoom tidak ditemukan.");
   const acc = data as ZoomAccount;
@@ -128,7 +139,7 @@ export async function exchangeCode(accountId: string, code: string, redirectUri:
 export async function accessToken(): Promise<{ token: string; acc: ZoomAccount }> {
   const acc = await getAccountRow();
   if (!acc) throw new Error("Kredensial Zoom belum diisi.");
-  if (!acc.refresh_token) throw new Error("Akun Zoom belum terhubung. Klik \"Hubungkan Zoom\".");
+  if (!acc.refresh_token) throw new Error('Akun Zoom belum terhubung. Klik "Hubungkan Zoom".');
   const tok = await tokenRequest(
     acc,
     new URLSearchParams({ grant_type: "refresh_token", refresh_token: acc.refresh_token }),
@@ -234,6 +245,11 @@ export async function deleteMeeting(id: string) {
       const alreadyGone = msg.includes("[404]") || msg.includes('"code":3001');
       if (!alreadyGone) {
         console.error("Zoom delete failed:", msg);
+        if (msg.includes('"code":4711') || msg.includes("does not contain scopes")) {
+          throw new Error(
+            "Izin hapus belum aktif di Zoom App. Tambahkan scope meeting:delete:meeting (dan meeting:delete:meeting:admin) di Zoom Marketplace, lalu klik Hubungkan Zoom lagi.",
+          );
+        }
         throw new Error(`Gagal menghapus meeting di Zoom: ${msg}`);
       }
     }
@@ -241,7 +257,6 @@ export async function deleteMeeting(id: string) {
   const del = await db.from("zoom_meetings").delete().eq("id", id);
   if (del.error) throw new Error(del.error.message);
 }
-
 
 export type ZoomMeetingRow = {
   id: string;
