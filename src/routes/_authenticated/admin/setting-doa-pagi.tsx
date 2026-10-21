@@ -793,9 +793,9 @@ function ReportPanel({ ukers }: { ukers: { id: string; nama: string }[] }) {
       const k = r.kehadiran.toLowerCase();
       if (k === "izin" || k === "cuti") row.izin += 1;
       else if (k === "sakit") row.sakit += 1;
-      else if (k === "tanpa keterangan" || k === "belum hadir") row.tanpa += 1;
-      // Hadir namun tidak melakukan absen QRIS dihitung sebagai terlambat.
-      else if (!isQrisFilled(r.qris)) row.terlambat += 1;
+      // Terlambat hanya bila status kehadiran Doa Pagi masih "Belum Hadir".
+      else if (k === "belum hadir") row.terlambat += 1;
+      else if (k === "tanpa keterangan") row.tanpa += 1;
     }
     return [...map.values()].sort((a, b) => a.nama.localeCompare(b.nama));
   }, [sections, q.data, jabatanMap]);
