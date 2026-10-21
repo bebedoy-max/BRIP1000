@@ -151,6 +151,52 @@ export function matchMerchantShortcut(value: string, list: MerchantShortcut[]): 
   return list.find((m) => m.shortcut === v)?.merchant ?? null;
 }
 
+/** Pemilik sebuah kode cepat: pilihan kehadiran atau merchant QRIS. */
+export type CodeOwner = { kind: "kehadiran" | "merchant"; index: number; name: string };
+
+export function describeCodeOwner(o: CodeOwner) {
+  return `${o.kind === "kehadiran" ? "kehadiran" : "merchant"} "${o.name}"`;
+}
+
+/** Peta kode (huruf kecil) -> semua pemakainya, lintas kehadiran & merchant. */
+export function codeUsages(
+  kehadiran: KehadiranOption[],
+  merchants: MerchantShortcut[],
+): Map<string, CodeOwner[]> {
+  const map = new Map<string, CodeOwner[]>();
+  const put = (code: string, owner: CodeOwner) => {
+    const k = code.trim().toLowerCase();
+    if (!k) return;
+    map.set(k, [...(map.get(k) ?? []), owner]);
+  };
+  kehadiran.forEach((o, index) => put(o.shortcut, { kind: "kehadiran", index, name: o.label }));
+  merchants.forEach((m, index) => put(m.shortcut, { kind: "merchant", index, name: m.merchant }));
+  return map;
+}
+
+/** Pemakai lain dari sebuah kode (selain dirinya sendiri), atau null bila kode masih bebas. */
+export function codeConflict(
+  usages: Map<string, CodeOwner[]>,
+  code: string,
+  self?: { kind: CodeOwner["kind"]; index: number },
+): CodeOwner | null {
+  const owners = usages.get(code.trim().toLowerCase()) ?? [];
+  return owners.find((o) => !self || o.kind !== self.kind || o.index !== self.index) ?? null;
+}
+
+/** Pesan kesalahan pertama bila ada kode kembar; null bila semua kode unik. */
+export function findCodeClash(
+  kehadiran: KehadiranOption[],
+  merchants: MerchantShortcut[],
+): string | null {
+  for (const [code, owners] of codeUsages(kehadiran, merchants)) {
+    if (owners.length > 1) {
+      return `Kode "${code}" dipakai ganda: ${owners.map(describeCodeOwner).join(" dan ")}. Ganti salah satunya dengan kode lain.`;
+    }
+  }
+  return null;
+}
+
 /** Kolom hari kerja pada tampilan: S (Senin), S (Selasa), R, K, J. */
 export const weekdayLabels = ["S", "S", "R", "K", "J"] as const;
 export const weekdayNames = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat"] as const;

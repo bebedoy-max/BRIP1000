@@ -35,6 +35,11 @@ import {
   type DoaRotationSettings,
   type KehadiranOption,
   type MerchantShortcut,
+  type CodeOwner,
+  codeConflict,
+  codeUsages,
+  describeCodeOwner,
+  findCodeClash,
 } from "@/lib/doa-pagi-ui";
 import {
   deleteDoaPagiSection,
@@ -252,30 +257,118 @@ function LogoSettings() {
 
 /** Fast Typing: kode singkat kolom kehadiran & merchant QRIS untuk mempercepat absensi. */
 function FastTypingSettings() {
+  const qc = useQueryClient();
+  const kq = useQuery({
+    queryKey: ["doa-pagi", "kehadiran-options"],
+    queryFn: () => getDoaPagiKehadiranOptions(),
+  });
+  const mq = useQuery({
+    queryKey: ["doa-pagi", "merchant-shortcuts"],
+    queryFn: () => getDoaPagiMerchantShortcuts(),
+  });
+  const [kDraft, setKDraft] = useState<KehadiranOption[] | null>(null);
+  const [mDraft, setMDraft] = useState<MerchantShortcut[] | null>(null);
+  const kList = kDraft ?? kq.data?.options ?? defaultKehadiranOptions;
+  const mList = mDraft ?? mq.data?.shortcuts ?? [];
+
+  // Satu kode hanya boleh punya satu arti, baik untuk kehadiran maupun merchant.
+  const usages = useMemo(() => codeUsages(kList, mList), [kList, mList]);
+  const clash = useMemo(() => findCodeClash(kList, mList), [kList, mList]);
+
+  const saveK = useMutation({
+    mutationFn: (values: KehadiranOption[]) =>
+      saveDoaPagiKehadiranOptions({
+        data: { options: values.filter((o) => o.label.trim().length > 0) },
+      }),
+    onSuccess: async () => {
+      toast.success("Pilihan kehadiran tersimpan.");
+      setKDraft(null);
+      await qc.invalidateQueries({ queryKey: ["doa-pagi", "kehadiran-options"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const saveM = useMutation({
+    mutationFn: (values: MerchantShortcut[]) =>
+      saveDoaPagiMerchantShortcuts({ data: { shortcuts: values } }),
+    onSuccess: async () => {
+      toast.success("Kode merchant tersimpan.");
+      setMDraft(null);
+      await qc.invalidateQueries({ queryKey: ["doa-pagi", "merchant-shortcuts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <div className="space-y-5">
-      <KehadiranSettings />
-      <MerchantShortcutSettings />
+      {clash ? (
+        <p
+          role="alert"
+          className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+        >
+          {clash}
+        </p>
+      ) : null}
+      <KehadiranSettings
+        list={kList}
+        loading={kq.isLoading}
+        dirty={!!kDraft}
+        saving={saveK.isPending}
+        blocked={!!clash}
+        usages={usages}
+        onChange={setKDraft}
+        onSave={() => saveK.mutate(kList)}
+      />
+      <MerchantShortcutSettings
+        list={mList}
+        loading={mq.isLoading}
+        dirty={!!mDraft}
+        saving={saveM.isPending}
+        blocked={!!clash}
+        usages={usages}
+        onChange={setMDraft}
+        onSave={() => saveM.mutate(mList)}
+      />
     </div>
   );
 }
 
+type FastPanelProps<T> = {
+  list: T[];
+  loading: boolean;
+  dirty: boolean;
+  saving: boolean;
+  /** Ada kode kembar: simpan dinonaktifkan sampai diperbaiki. */
+  blocked: boolean;
+  usages: Map<string, CodeOwner[]>;
+  onChange: (next: T[]) => void;
+  onSave: () => void;
+};
+
+/** Pesan inline bila kode sebuah baris sudah dipakai pemilik lain. */
+function CodeWarning({ owner }: { owner: CodeOwner | null }) {
+  if (!owner) return null;
+  return (
+    <p className="px-1 text-xs text-destructive">
+      Kode sudah dipakai untuk {describeCodeOwner(owner)}. Ganti dengan kode lain.
+    </p>
+  );
+}
+
 /** Kode singkat merchant QRIS: ketik kode di kolom QRIS lalu Enter -> nama merchant terisi. */
-function MerchantShortcutSettings() {
-  const qc = useQueryClient();
-  const q = useQuery({
-    queryKey: ["doa-pagi", "merchant-shortcuts"],
-    queryFn: () => getDoaPagiMerchantShortcuts(),
-  });
-  const kehadiranQuery = useQuery({
-    queryKey: ["doa-pagi", "kehadiran-options"],
-    queryFn: () => getDoaPagiKehadiranOptions(),
-  });
-  const [draft, setDraft] = useState<MerchantShortcut[] | null>(null);
+function MerchantShortcutSettings({
+  list,
+  loading,
+  dirty,
+  saving,
+  blocked,
+  usages,
+  onChange,
+  onSave,
+}: FastPanelProps<MerchantShortcut>) {
   const [newKode, setNewKode] = useState("");
   const [newMerchant, setNewMerchant] = useState("");
   const [term, setTerm] = useState("");
-  const list = draft ?? q.data?.shortcuts ?? [];
+  const [addError, setAddError] = useState("");
 
   // Saran merchant dari database merchant QRIS (ditunda agar tidak query tiap ketikan).
   useEffect(() => {
@@ -288,40 +381,26 @@ function MerchantShortcutSettings() {
     queryFn: () => searchDoaPagiQris({ data: { term } }),
   });
 
-  const save = useMutation({
-    mutationFn: (values: MerchantShortcut[]) =>
-      saveDoaPagiMerchantShortcuts({ data: { shortcuts: values } }),
-    onSuccess: async () => {
-      toast.success("Kode merchant tersimpan.");
-      setDraft(null);
-      await qc.invalidateQueries({ queryKey: ["doa-pagi", "merchant-shortcuts"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   function patch(i: number, part: Partial<MerchantShortcut>) {
-    setDraft(list.map((m, idx) => (idx === i ? { ...m, ...part } : m)));
+    onChange(list.map((m, idx) => (idx === i ? { ...m, ...part } : m)));
   }
 
   function add() {
     const merchant = newMerchant.trim();
     const shortcut = newKode.trim().toLowerCase();
     if (!shortcut || !merchant) {
-      toast.error("Kode dan nama merchant wajib diisi.");
+      setAddError("Kode dan nama merchant wajib diisi.");
       return;
     }
-    if (list.some((m) => m.shortcut === shortcut)) {
-      toast.error(`Kode "${shortcut}" sudah dipakai merchant lain.`);
+    const owner = codeConflict(usages, shortcut);
+    if (owner) {
+      setAddError(
+        `Kode "${shortcut}" sudah dipakai untuk ${describeCodeOwner(owner)}. Silakan ganti dengan kode lain.`,
+      );
       return;
     }
-    const bentrok = (kehadiranQuery.data?.options ?? defaultKehadiranOptions).find(
-      (o) => o.shortcut.toLowerCase() === shortcut,
-    );
-    if (bentrok) {
-      toast.error(`Kode "${shortcut}" sudah dipakai untuk kehadiran "${bentrok.label}".`);
-      return;
-    }
-    setDraft([...list, { shortcut, merchant }]);
+    setAddError("");
+    onChange([...list, { shortcut, merchant }]);
     setNewKode("");
     setNewMerchant("");
   }
@@ -338,99 +417,115 @@ function MerchantShortcutSettings() {
             kolom Absen Qris lalu Enter, nama merchant terisi otomatis.
           </p>
         </div>
-        <Button onClick={() => save.mutate(list)} disabled={save.isPending || !draft}>
-          {save.isPending ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Save className="size-4" />
-          )}
+        <Button onClick={onSave} disabled={saving || !dirty || blocked}>
+          {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
           Simpan Kode
         </Button>
       </div>
 
       <form
-        className="flex flex-wrap items-end gap-3 rounded-2xl border border-input bg-muted/30 p-3"
+        className="space-y-2 rounded-2xl border border-input bg-muted/30 p-3"
         onSubmit={(e) => {
           e.preventDefault();
           add();
         }}
       >
-        <div className="w-28">
-          <Label htmlFor="mc-kode" className="text-xs">
-            Kode
-          </Label>
-          <Input
-            id="mc-kode"
-            value={newKode}
-            maxLength={12}
-            placeholder="tl"
-            onChange={(e) => setNewKode(e.target.value)}
-          />
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="w-28">
+            <Label htmlFor="mc-kode" className="text-xs">
+              Kode
+            </Label>
+            <Input
+              id="mc-kode"
+              value={newKode}
+              maxLength={12}
+              placeholder="tl"
+              onChange={(e) => {
+                setNewKode(e.target.value);
+                setAddError("");
+              }}
+            />
+          </div>
+          <div className="min-w-56 flex-1">
+            <Label htmlFor="mc-merchant" className="text-xs">
+              Nama Merchant (ketik manual atau pilih saran)
+            </Label>
+            <Input
+              id="mc-merchant"
+              list="mc-merchant-list"
+              value={newMerchant}
+              maxLength={80}
+              autoComplete="off"
+              placeholder="contoh: Warung Teh Lila"
+              onChange={(e) => setNewMerchant(e.target.value)}
+            />
+            <datalist id="mc-merchant-list">
+              {(suggest.data ?? []).map((m) => (
+                <option key={`${m.nama}-${m.storeId}`} value={m.nama} />
+              ))}
+            </datalist>
+          </div>
+          <Button type="submit" variant="secondary">
+            <Plus className="size-4" /> Tambah
+          </Button>
         </div>
-        <div className="min-w-56 flex-1">
-          <Label htmlFor="mc-merchant" className="text-xs">
-            Nama Merchant (ketik manual atau pilih saran)
-          </Label>
-          <Input
-            id="mc-merchant"
-            list="mc-merchant-list"
-            value={newMerchant}
-            maxLength={80}
-            autoComplete="off"
-            placeholder="contoh: Warung Teh Lila"
-            onChange={(e) => setNewMerchant(e.target.value)}
-          />
-          <datalist id="mc-merchant-list">
-            {(suggest.data ?? []).map((m) => (
-              <option key={`${m.nama}-${m.storeId}`} value={m.nama} />
-            ))}
-          </datalist>
-        </div>
-        <Button type="submit" variant="secondary">
-          <Plus className="size-4" /> Tambah
-        </Button>
+        {addError ? (
+          <p role="alert" className="px-1 text-xs text-destructive">
+            {addError}
+          </p>
+        ) : null}
       </form>
 
-      {q.isLoading ? (
+      {loading ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" /> Memuat kode merchant…
         </p>
       ) : list.length ? (
         <>
           <p className="text-xs text-muted-foreground">
-            {list.length} kode{draft ? " · ada perubahan belum disimpan" : ""}
+            {list.length} kode{dirty ? " · ada perubahan belum disimpan" : ""}
           </p>
           <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(19rem,1fr))]">
-            {list.map((m, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-2 rounded-2xl border border-input bg-background/60 p-2"
-              >
-                <Input
-                  aria-label="Kode"
-                  value={m.shortcut}
-                  maxLength={12}
-                  className="h-9 w-16 shrink-0 px-2 text-center font-mono text-xs"
-                  onChange={(e) => patch(i, { shortcut: e.target.value.trim().toLowerCase() })}
-                />
-                <Input
-                  aria-label="Nama merchant"
-                  value={m.merchant}
-                  maxLength={80}
-                  className="h-9 min-w-0 flex-1"
-                  onChange={(e) => patch(i, { merchant: e.target.value })}
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 shrink-0"
-                  aria-label={`Hapus ${m.merchant}`}
-                  onClick={() => setDraft(list.filter((_, idx) => idx !== i))}
+            {list.map((m, i) => {
+              const owner = m.shortcut
+                ? codeConflict(usages, m.shortcut, { kind: "merchant", index: i })
+                : null;
+              return (
+                <div
+                  key={i}
+                  className={`space-y-1 rounded-2xl border bg-background/60 p-2 ${
+                    owner ? "border-destructive" : "border-input"
+                  }`}
                 >
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-            ))}
+                  <div className="flex items-center gap-2">
+                    <Input
+                      aria-label="Kode"
+                      value={m.shortcut}
+                      maxLength={12}
+                      className="h-9 w-16 shrink-0 px-2 text-center font-mono text-xs"
+                      onChange={(e) => patch(i, { shortcut: e.target.value.trim().toLowerCase() })}
+                    />
+                    <Input
+                      aria-label="Nama merchant"
+                      value={m.merchant}
+                      maxLength={80}
+                      className="h-9 min-w-0 flex-1"
+                      onChange={(e) => patch(i, { merchant: e.target.value })}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 shrink-0"
+                      aria-label={`Hapus ${m.merchant}`}
+                      onClick={() => onChange(list.filter((_, idx) => idx !== i))}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                  <CodeWarning owner={owner} />
+                </div>
+              );
+            })}
           </div>
         </>
       ) : (
@@ -441,50 +536,44 @@ function MerchantShortcutSettings() {
 }
 
 /** Pengaturan pilihan kolom kehadiran: form tambah di atas, kartu pilihan di bawah. */
-function KehadiranSettings() {
-  const qc = useQueryClient();
-  const q = useQuery({
-    queryKey: ["doa-pagi", "kehadiran-options"],
-    queryFn: () => getDoaPagiKehadiranOptions(),
-  });
-  const [draft, setDraft] = useState<KehadiranOption[] | null>(null);
+function KehadiranSettings({
+  list,
+  loading,
+  dirty,
+  saving,
+  blocked,
+  usages,
+  onChange,
+  onSave,
+}: FastPanelProps<KehadiranOption>) {
   const [newKode, setNewKode] = useState("");
   const [newLabel, setNewLabel] = useState("");
-  const options = draft ?? q.data?.options ?? defaultKehadiranOptions;
-
-  const save = useMutation({
-    mutationFn: (values: KehadiranOption[]) =>
-      saveDoaPagiKehadiranOptions({
-        data: { options: values.filter((o) => o.label.trim().length > 0) },
-      }),
-    onSuccess: async () => {
-      toast.success("Pilihan kehadiran tersimpan.");
-      setDraft(null);
-      await qc.invalidateQueries({ queryKey: ["doa-pagi", "kehadiran-options"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const [addError, setAddError] = useState("");
 
   function patch(i: number, part: Partial<KehadiranOption>) {
-    setDraft(options.map((o, idx) => (idx === i ? { ...o, ...part } : o)));
+    onChange(list.map((o, idx) => (idx === i ? { ...o, ...part } : o)));
   }
 
   function add() {
     const label = newLabel.trim();
     const shortcut = newKode.trim().toLowerCase();
     if (!label) {
-      toast.error("Isi pilihan wajib diisi.");
+      setAddError("Isi pilihan wajib diisi.");
       return;
     }
-    if (options.some((o) => o.label.toLowerCase() === label.toLowerCase())) {
-      toast.error("Pilihan tersebut sudah ada.");
+    if (list.some((o) => o.label.toLowerCase() === label.toLowerCase())) {
+      setAddError(`Pilihan "${label}" sudah ada.`);
       return;
     }
-    if (shortcut && options.some((o) => o.shortcut.toLowerCase() === shortcut)) {
-      toast.error(`Kode "${shortcut}" sudah dipakai.`);
+    const owner = shortcut ? codeConflict(usages, shortcut) : null;
+    if (owner) {
+      setAddError(
+        `Kode "${shortcut}" sudah dipakai untuk ${describeCodeOwner(owner)}. Silakan ganti dengan kode lain.`,
+      );
       return;
     }
-    setDraft([...options, { shortcut, label }]);
+    setAddError("");
+    onChange([...list, { shortcut, label }]);
     setNewKode("");
     setNewLabel("");
   }
@@ -500,93 +589,109 @@ function KehadiranSettings() {
             Kode yang diketik di kolom Absen Qris lalu Enter akan otomatis mengisi kolom Kehadiran.
           </p>
         </div>
-        <Button onClick={() => save.mutate(options)} disabled={save.isPending || !draft}>
-          {save.isPending ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Save className="size-4" />
-          )}
+        <Button onClick={onSave} disabled={saving || !dirty || blocked}>
+          {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
           Simpan Pilihan
         </Button>
       </div>
 
       <form
-        className="flex flex-wrap items-end gap-3 rounded-2xl border border-input bg-muted/30 p-3"
+        className="space-y-2 rounded-2xl border border-input bg-muted/30 p-3"
         onSubmit={(e) => {
           e.preventDefault();
           add();
         }}
       >
-        <div className="w-28">
-          <Label htmlFor="kh-kode" className="text-xs">
-            Kode
-          </Label>
-          <Input
-            id="kh-kode"
-            value={newKode}
-            maxLength={12}
-            placeholder="bh"
-            onChange={(e) => setNewKode(e.target.value)}
-          />
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="w-28">
+            <Label htmlFor="kh-kode" className="text-xs">
+              Kode
+            </Label>
+            <Input
+              id="kh-kode"
+              value={newKode}
+              maxLength={12}
+              placeholder="bh"
+              onChange={(e) => {
+                setNewKode(e.target.value);
+                setAddError("");
+              }}
+            />
+          </div>
+          <div className="min-w-48 flex-1">
+            <Label htmlFor="kh-label" className="text-xs">
+              Isi Pilihan Kehadiran
+            </Label>
+            <Input
+              id="kh-label"
+              value={newLabel}
+              maxLength={40}
+              placeholder="contoh: Belum Hadir"
+              onChange={(e) => setNewLabel(e.target.value)}
+            />
+          </div>
+          <Button type="submit" variant="secondary">
+            <Plus className="size-4" /> Tambah
+          </Button>
         </div>
-        <div className="min-w-48 flex-1">
-          <Label htmlFor="kh-label" className="text-xs">
-            Isi Pilihan Kehadiran
-          </Label>
-          <Input
-            id="kh-label"
-            value={newLabel}
-            maxLength={40}
-            placeholder="contoh: Belum Hadir"
-            onChange={(e) => setNewLabel(e.target.value)}
-          />
-        </div>
-        <Button type="submit" variant="secondary">
-          <Plus className="size-4" /> Tambah
-        </Button>
+        {addError ? (
+          <p role="alert" className="px-1 text-xs text-destructive">
+            {addError}
+          </p>
+        ) : null}
       </form>
 
-      {q.isLoading ? (
+      {loading ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" /> Memuat pilihan kehadiran…
         </p>
       ) : (
         <>
           <p className="text-xs text-muted-foreground">
-            {options.length} pilihan{draft ? " · ada perubahan belum disimpan" : ""}
+            {list.length} pilihan{dirty ? " · ada perubahan belum disimpan" : ""}
           </p>
           <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(17rem,1fr))]">
-            {options.map((o, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-2 rounded-2xl border border-input bg-background/60 p-2"
-              >
-                <Input
-                  aria-label="Kode"
-                  value={o.shortcut}
-                  maxLength={12}
-                  placeholder="kode"
-                  className="h-9 w-16 shrink-0 px-2 text-center font-mono text-xs"
-                  onChange={(e) => patch(i, { shortcut: e.target.value.trim().toLowerCase() })}
-                />
-                <Input
-                  aria-label="Isi pilihan"
-                  value={o.label}
-                  maxLength={40}
-                  className="h-9 min-w-0 flex-1"
-                  onChange={(e) => patch(i, { label: e.target.value })}
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 shrink-0"
-                  aria-label={`Hapus ${o.label}`}
-                  onClick={() => setDraft(options.filter((_, idx) => idx !== i))}
+            {list.map((o, i) => {
+              const owner = o.shortcut
+                ? codeConflict(usages, o.shortcut, { kind: "kehadiran", index: i })
+                : null;
+              return (
+                <div
+                  key={i}
+                  className={`space-y-1 rounded-2xl border bg-background/60 p-2 ${
+                    owner ? "border-destructive" : "border-input"
+                  }`}
                 >
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-            ))}
+                  <div className="flex items-center gap-2">
+                    <Input
+                      aria-label="Kode"
+                      value={o.shortcut}
+                      maxLength={12}
+                      placeholder="kode"
+                      className="h-9 w-16 shrink-0 px-2 text-center font-mono text-xs"
+                      onChange={(e) => patch(i, { shortcut: e.target.value.trim().toLowerCase() })}
+                    />
+                    <Input
+                      aria-label="Isi pilihan"
+                      value={o.label}
+                      maxLength={40}
+                      className="h-9 min-w-0 flex-1"
+                      onChange={(e) => patch(i, { label: e.target.value })}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 shrink-0"
+                      aria-label={`Hapus ${o.label}`}
+                      onClick={() => onChange(list.filter((_, idx) => idx !== i))}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                  <CodeWarning owner={owner} />
+                </div>
+              );
+            })}
           </div>
         </>
       )}

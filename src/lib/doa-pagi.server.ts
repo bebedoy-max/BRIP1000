@@ -313,7 +313,9 @@ export async function getKehadiranOptions(): Promise<KehadiranOption[]> {
 }
 
 export async function saveKehadiranOptions(options: KehadiranOption[]) {
-  const { normalizeKehadiranOptions } = await import("@/lib/doa-pagi-ui");
+  const { normalizeKehadiranOptions, findCodeClash } = await import("@/lib/doa-pagi-ui");
+  const clash = findCodeClash(normalizeKehadiranOptions(options), await getMerchantShortcuts());
+  if (clash) throw new Error(clash);
   const db = await admin();
   const { error } = await db.from("doa_pagi_kehadiran_options").upsert(
     {
@@ -342,7 +344,9 @@ export async function getMerchantShortcuts() {
 }
 
 export async function saveMerchantShortcuts(list: { shortcut: string; merchant: string }[]) {
-  const { normalizeMerchantShortcuts } = await import("@/lib/doa-pagi-ui");
+  const { normalizeMerchantShortcuts, findCodeClash } = await import("@/lib/doa-pagi-ui");
+  const clash = findCodeClash(await getKehadiranOptions(), normalizeMerchantShortcuts(list));
+  if (clash) throw new Error(clash);
   const db = await admin();
   const { error } = await db.from("doa_pagi_kehadiran_options").upsert(
     {
