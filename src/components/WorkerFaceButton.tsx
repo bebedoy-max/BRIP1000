@@ -22,12 +22,31 @@ import {
   type WorkerFace,
 } from "@/lib/face";
 
-
 /**
  * Tombol + dialog "Foto Wajah" pada menu Data Pekerja.
  * Web app hanya menyimpan foto master ke Storage dan menandai status
  * `pending`; perhitungan embedding dilakukan companion app.
  */
+const WORKER_FACES_KEY = ["worker-faces"] as const;
+
+/**
+ * Satu query untuk seluruh foto wajah pekerja (bukan satu query per baris tabel),
+ * dibagikan ke semua tombol lewat cache react-query.
+ */
+function useWorkerFaces() {
+  return useQuery({
+    queryKey: WORKER_FACES_KEY,
+    queryFn: async () => {
+      const { data, error } = await db.from("worker_faces").select(WORKER_FACE_COLUMNS);
+      if (error) throw error;
+      const map = new Map<string, WorkerFace>();
+      for (const row of (data ?? []) as unknown as WorkerFace[])
+        map.set(String(row.worker_id), row);
+      return map;
+    },
+  });
+}
+
 export function WorkerFaceButton({
   workerId,
   personalNumber,
@@ -43,18 +62,8 @@ export function WorkerFaceButton({
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  const face = useQuery({
-    queryKey: ["worker-face", workerId],
-    queryFn: async () => {
-      const { data, error } = await db
-        .from("worker_faces")
-        .select(WORKER_FACE_COLUMNS)
-        .eq("worker_id", workerId)
-        .maybeSingle();
-      if (error) throw error;
-      return (data ?? null) as WorkerFace | null;
-    },
-  });
+  const faces = useWorkerFaces();
+  const face = { data: faces.data?.get(workerId) ?? null };
 
   const upload = useMutation({
     mutationFn: async (file: File) => {
@@ -83,7 +92,7 @@ export function WorkerFaceButton({
     },
     onSuccess: () => {
       toast.success("Foto master tersimpan. Menunggu diproses companion app.");
-      void qc.invalidateQueries({ queryKey: ["worker-face", workerId] });
+      void qc.invalidateQueries({ queryKey: WORKER_FACES_KEY });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -127,7 +136,6 @@ export function WorkerFaceButton({
           <ScanFace className="size-4" /> Foto Wajah
         </Button>
       )}
-
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg">

@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
-
 // Dynamic table names need an untyped client.
 import { sortByUker } from "@/lib/uker-order";
 
@@ -71,8 +70,6 @@ export type FieldType =
   | "digits"
   | "ip"
   | "latlng";
-
-
 
 /** Hanya angka. */
 export function formatDigits(v: string) {
@@ -159,7 +156,11 @@ function RefTextField({
   const suggestions = useMemo(() => {
     if (!term) return options.slice(0, 8);
     return options
-      .filter((o) => String(o[labelColumn] ?? "").toLowerCase().includes(term))
+      .filter((o) =>
+        String(o[labelColumn] ?? "")
+          .toLowerCase()
+          .includes(term),
+      )
       .slice(0, 8);
   }, [options, labelColumn, term]);
 
@@ -207,8 +208,6 @@ function RefTextField({
   );
 }
 
-
-
 type Row = Record<string, unknown>;
 
 export type ResourceManagerProps = {
@@ -232,7 +231,6 @@ export type ResourceManagerProps = {
   pageSize?: number;
 };
 
-
 function emptyForm(fields: Field[]): Row {
   const out: Row = {};
   for (const f of fields) {
@@ -243,6 +241,8 @@ function emptyForm(fields: Field[]): Row {
   return out;
 }
 
+/** Jumlah baris yang dirender per tahap pada tabel tanpa paginasi server. */
+const RENDER_CHUNK = 50;
 
 export function ResourceManager({
   table,
@@ -321,17 +321,13 @@ export function ResourceManager({
         if (error) throw error;
         return { rows: sortUkerRows((data ?? []) as Row[]), count: count ?? 0 };
       }
-      const { data, error } = await db
-        .from(table)
-        .select("*")
-        .order(orderBy, { ascending: false });
+      const { data, error } = await db.from(table).select("*").order(orderBy, { ascending: false });
       if (error) throw error;
       const rows = sortUkerRows((data ?? []) as Row[]);
       return { rows, count: rows.length };
     },
     placeholderData: (prev) => prev,
   });
-
 
   const ukers = useQuery({
     queryKey: ["ukers-options"],
@@ -351,12 +347,8 @@ export function ResourceManager({
     [fields],
   );
 
-
   /** Field yang terisi otomatis dari relasi field lain. */
-  const autoFillFields = useMemo(
-    () => fields.filter((f) => f.autoFill),
-    [fields],
-  );
+  const autoFillFields = useMemo(() => fields.filter((f) => f.autoFill), [fields]);
 
   const refs = useQuery({
     queryKey: [
@@ -382,6 +374,17 @@ export function ResourceManager({
     },
   });
 
+  /** Peta id -> baris per kolom referensi: pencarian label O(1) per sel. */
+  const refById = useMemo(() => {
+    const out: Record<string, Map<string, Row>> = {};
+    for (const [key, list] of Object.entries(refs.data ?? {})) {
+      const m = new Map<string, Row>();
+      for (const o of list) m.set(String(o["id"]), o);
+      out[key] = m;
+    }
+    return out;
+  }, [refs.data]);
+
   const ukerLabel = useMemo(() => {
     const m = new Map<string, string>();
     for (const u of ukers.data ?? [])
@@ -399,8 +402,9 @@ export function ResourceManager({
           const opts = refs.data?.[f.key] ?? [];
           const matched = opts.find(
             (o) =>
-              String(o[f.refLabelColumn ?? "nama"] ?? "").trim().toLowerCase() ===
-              label.toLowerCase(),
+              String(o[f.refLabelColumn ?? "nama"] ?? "")
+                .trim()
+                .toLowerCase() === label.toLowerCase(),
           );
           if (!label) {
             if (f.required) throw new Error(`${f.label} wajib diisi`);
@@ -416,7 +420,6 @@ export function ResourceManager({
         const v = payload[f.key];
         const str = typeof v === "string" ? v.trim() : v;
         if (f.type === "boolean") body[f.key] = Boolean(v);
-
         else if (str === "" || str === undefined || str === null) {
           if (f.required) throw new Error(`${f.label} wajib diisi`);
           body[f.key] = null;
@@ -425,7 +428,6 @@ export function ResourceManager({
           if (f.digitsLength && String(str).length !== f.digitsLength)
             throw new Error(`${f.label} harus ${f.digitsLength} digit angka`);
           body[f.key] = String(str);
-
         } else if (f.type === "ip") {
           if (!isValidIp(String(str)))
             throw new Error(`${f.label} harus format IP valid, contoh 013.156.017.001`);
@@ -449,7 +451,10 @@ export function ResourceManager({
         if ((count ?? 0) > 0) throw new Error(`${f.label} "${val}" sudah terdaftar`);
       }
       if (editing) {
-        const { error } = await db.from(table).update(body).eq("id", editing["id"] as string);
+        const { error } = await db
+          .from(table)
+          .update(body)
+          .eq("id", editing["id"] as string);
         if (error) throw error;
       } else {
         if (ownerColumn) {
@@ -498,11 +503,11 @@ export function ResourceManager({
     if (f.type === "select" && f.optionItems)
       return f.optionItems.find((o) => o.value === String(v))?.label ?? "";
     if (f.type === "ref") {
-      const opt = (refs.data?.[f.key] ?? []).find((o) => String(o["id"]) === String(v));
+      const opt = refById[f.key]?.get(String(v));
       return opt ? String(opt[f.refLabelColumn ?? "nama"] ?? "") : "";
     }
     if (f.type === "reftext") {
-      const opt = (refs.data?.[f.key] ?? []).find((o) => String(o["id"]) === String(v));
+      const opt = refById[f.key]?.get(String(v));
       if (opt) return String(opt[f.refLabelColumn ?? "nama"] ?? "");
       const raw = f.textColumn ? row[f.textColumn] : null;
       return raw == null ? "" : String(raw);
@@ -528,16 +533,26 @@ export function ResourceManager({
 
   const terms = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const allRows: Row[] = list.data?.rows ?? [];
+  // Haystack pencarian di-cache per baris; hanya dihitung ulang bila data/relasi berubah.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const hayCache = useMemo(() => new WeakMap<Row, string>(), [allRows, refById, ukerLabel]);
   const totalCount = list.data?.count ?? allRows.length;
   const rows = paged
     ? allRows
     : allRows.filter((r) => {
         if (terms.length === 0) return true;
-        const hay = rowHaystack(r);
+        let hay = hayCache.get(r);
+        if (hay === undefined) {
+          hay = rowHaystack(r);
+          hayCache.set(r, hay);
+        }
         return terms.every((t) => hay.includes(t));
       });
+  /** Tabel tanpa paginasi server dirender bertahap agar menu besar tetap ringan. */
+  const [shown, setShown] = useState(RENDER_CHUNK);
+  useEffect(() => setShown(RENDER_CHUNK), [q, table]);
+  const visibleRows = paged || focusId ? rows : rows.slice(0, shown);
   const pageCount = paged ? Math.max(1, Math.ceil(totalCount / pageSize!)) : 1;
-
 
   useEffect(() => {
     if (focusId && focusRef.current) {
@@ -547,9 +562,7 @@ export function ResourceManager({
 
   /** Nama entitas (uker/atm/edc/dst) untuk label "Foto <nama>" pada popup maps. */
   function rowLabel(row: Row): string | undefined {
-    const pick = fields.find((f) =>
-      /nama|lokasi|merchant|judul|title/i.test(f.key),
-    );
+    const pick = fields.find((f) => /nama|lokasi|merchant|judul|title/i.test(f.key));
     if (pick) {
       const t = cellText(pick, row).trim();
       if (t) return t;
@@ -596,11 +609,10 @@ export function ResourceManager({
     if (f.type === "select" && f.optionItems)
       return f.optionItems.find((o) => o.value === String(v))?.label ?? "—";
     if (f.type === "ref") {
-      const opt = (refs.data?.[f.key] ?? []).find((o) => String(o["id"]) === String(v));
+      const opt = refById[f.key]?.get(String(v));
       return opt ? String(opt[f.refLabelColumn ?? "nama"] ?? "—") : "—";
     }
     if (f.type === "reftext") return cellText(f, row) || "—";
-
 
     if (v === null || v === undefined || v === "") return "—";
     if (f.type === "latlng")
@@ -616,15 +628,12 @@ export function ResourceManager({
     return String(v);
   }
 
-
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">{title}</h1>
-          {description ? (
-            <p className="text-sm text-muted-foreground">{description}</p>
-          ) : null}
+          {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
@@ -684,7 +693,7 @@ export function ResourceManager({
                 </td>
               </tr>
             ) : (
-              rows.map((row) => (
+              visibleRows.map((row) => (
                 <tr
                   key={String(row["id"])}
                   ref={String(row["id"]) === focusId ? focusRef : undefined}
@@ -692,7 +701,6 @@ export function ResourceManager({
                     String(row["id"]) === focusId ? "bg-primary/15 ring-1 ring-primary/40" : ""
                   }`}
                 >
-
                   {tableFields.map((f, i) => (
                     <td
                       key={f.key}
@@ -764,6 +772,22 @@ export function ResourceManager({
         </table>
       </div>
 
+      {!paged && !focusId && rows.length > visibleRows.length ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+          <p className="text-muted-foreground">
+            Menampilkan {visibleRows.length} dari {rows.length.toLocaleString("id-ID")} data
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShown((n) => n + RENDER_CHUNK)}>
+              Tampilkan {RENDER_CHUNK} lagi
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShown(rows.length)}>
+              Tampilkan semua
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       {paged ? (
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
           <p className="text-muted-foreground">
@@ -794,8 +818,6 @@ export function ResourceManager({
           </div>
         </div>
       ) : null}
-
-
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
@@ -886,9 +908,7 @@ export function ResourceManager({
                     text={String(form[f.textColumn ?? ""] ?? "")}
                     matchedId={String(form[f.key] ?? "")}
                     {...(f.placeholder ? { placeholder: f.placeholder } : {})}
-                    onText={(v) =>
-                      setForm({ ...form, [f.textColumn ?? "_text"]: v, [f.key]: "" })
-                    }
+                    onText={(v) => setForm({ ...form, [f.textColumn ?? "_text"]: v, [f.key]: "" })}
                     onPick={(o) => {
                       const next: Row = {
                         ...form,
@@ -903,7 +923,6 @@ export function ResourceManager({
                       setForm(next);
                     }}
                   />
-
                 ) : f.type === "date" || f.type === "datetime" ? (
                   <DatePickerField
                     id={f.key}
@@ -913,7 +932,6 @@ export function ResourceManager({
                     onChange={(v: string) => setForm({ ...form, [f.key]: v })}
                   />
                 ) : (
-
                   <Input
                     id={f.key}
                     type={f.type === "number" ? "number" : "text"}
@@ -921,9 +939,7 @@ export function ResourceManager({
                     value={String(form[f.key] ?? "")}
 
                     inputMode={f.type === "ip" || f.type === "digits" ? "numeric" : undefined}
-                    maxLength={
-                      f.type === "digits" && f.digitsLength ? f.digitsLength : undefined
-                    }
+                    maxLength={f.type === "digits" && f.digitsLength ? f.digitsLength : undefined}
                     placeholder={
                       f.placeholder ??
                       (f.type === "ip"
