@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -11,6 +11,7 @@ import {
   Sunrise,
   Trash2,
   X,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -33,16 +34,20 @@ import {
   type DoaPagiSection,
   type DoaRotationSettings,
   type KehadiranOption,
+  type MerchantShortcut,
 } from "@/lib/doa-pagi-ui";
 import {
   deleteDoaPagiSection,
   getDoaPagiKehadiranOptions,
+  getDoaPagiMerchantShortcuts,
   getDoaPagiLogos,
   getDoaPagiReport,
   getDoaPagiRotation,
   getDoaPagiSettings,
   resetDoaPagiData,
   saveDoaPagiKehadiranOptions,
+  saveDoaPagiMerchantShortcuts,
+  searchDoaPagiQris,
   saveDoaPagiLogos,
   saveDoaPagiRotation,
   saveDoaPagiSection,
@@ -240,6 +245,196 @@ function LogoSettings() {
             );
           })}
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Fast Typing: kode singkat kolom kehadiran & merchant QRIS untuk mempercepat absensi. */
+function FastTypingSettings() {
+  return (
+    <div className="space-y-5">
+      <KehadiranSettings />
+      <MerchantShortcutSettings />
+    </div>
+  );
+}
+
+/** Kode singkat merchant QRIS: ketik kode di kolom QRIS lalu Enter -> nama merchant terisi. */
+function MerchantShortcutSettings() {
+  const qc = useQueryClient();
+  const q = useQuery({
+    queryKey: ["doa-pagi", "merchant-shortcuts"],
+    queryFn: () => getDoaPagiMerchantShortcuts(),
+  });
+  const kehadiranQuery = useQuery({
+    queryKey: ["doa-pagi", "kehadiran-options"],
+    queryFn: () => getDoaPagiKehadiranOptions(),
+  });
+  const [draft, setDraft] = useState<MerchantShortcut[] | null>(null);
+  const [newKode, setNewKode] = useState("");
+  const [newMerchant, setNewMerchant] = useState("");
+  const [term, setTerm] = useState("");
+  const list = draft ?? q.data?.shortcuts ?? [];
+
+  // Saran merchant dari database merchant QRIS (ditunda agar tidak query tiap ketikan).
+  useEffect(() => {
+    const t = window.setTimeout(() => setTerm(newMerchant.trim()), 250);
+    return () => window.clearTimeout(t);
+  }, [newMerchant]);
+  const suggest = useQuery({
+    queryKey: ["doa-pagi", "merchant-suggest", term],
+    enabled: term.length >= 2,
+    queryFn: () => searchDoaPagiQris({ data: { term } }),
+  });
+
+  const save = useMutation({
+    mutationFn: (values: MerchantShortcut[]) =>
+      saveDoaPagiMerchantShortcuts({ data: { shortcuts: values } }),
+    onSuccess: async () => {
+      toast.success("Kode merchant tersimpan.");
+      setDraft(null);
+      await qc.invalidateQueries({ queryKey: ["doa-pagi", "merchant-shortcuts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  function patch(i: number, part: Partial<MerchantShortcut>) {
+    setDraft(list.map((m, idx) => (idx === i ? { ...m, ...part } : m)));
+  }
+
+  function add() {
+    const merchant = newMerchant.trim();
+    const shortcut = newKode.trim().toLowerCase();
+    if (!shortcut || !merchant) {
+      toast.error("Kode dan nama merchant wajib diisi.");
+      return;
+    }
+    if (list.some((m) => m.shortcut === shortcut)) {
+      toast.error(`Kode "${shortcut}" sudah dipakai merchant lain.`);
+      return;
+    }
+    const bentrok = (kehadiranQuery.data?.options ?? defaultKehadiranOptions).find(
+      (o) => o.shortcut.toLowerCase() === shortcut,
+    );
+    if (bentrok) {
+      toast.error(`Kode "${shortcut}" sudah dipakai untuk kehadiran "${bentrok.label}".`);
+      return;
+    }
+    setDraft([...list, { shortcut, merchant }]);
+    setNewKode("");
+    setNewMerchant("");
+  }
+
+  return (
+    <div className="glass-card space-y-4 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="flex items-center gap-2 font-semibold">
+            <Zap className="size-4" /> Kode Cepat Merchant QRIS
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Contoh: kode <span className="font-mono">tl</span> untuk Warung Teh Lila. Ketik kode di
+            kolom Absen Qris lalu Enter, nama merchant terisi otomatis.
+          </p>
+        </div>
+        <Button onClick={() => save.mutate(list)} disabled={save.isPending || !draft}>
+          {save.isPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Save className="size-4" />
+          )}
+          Simpan Kode
+        </Button>
+      </div>
+
+      <form
+        className="flex flex-wrap items-end gap-3 rounded-2xl border border-input bg-muted/30 p-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          add();
+        }}
+      >
+        <div className="w-28">
+          <Label htmlFor="mc-kode" className="text-xs">
+            Kode
+          </Label>
+          <Input
+            id="mc-kode"
+            value={newKode}
+            maxLength={12}
+            placeholder="tl"
+            onChange={(e) => setNewKode(e.target.value)}
+          />
+        </div>
+        <div className="min-w-56 flex-1">
+          <Label htmlFor="mc-merchant" className="text-xs">
+            Nama Merchant (ketik manual atau pilih saran)
+          </Label>
+          <Input
+            id="mc-merchant"
+            list="mc-merchant-list"
+            value={newMerchant}
+            maxLength={80}
+            autoComplete="off"
+            placeholder="contoh: Warung Teh Lila"
+            onChange={(e) => setNewMerchant(e.target.value)}
+          />
+          <datalist id="mc-merchant-list">
+            {(suggest.data ?? []).map((m) => (
+              <option key={`${m.nama}-${m.storeId}`} value={m.nama} />
+            ))}
+          </datalist>
+        </div>
+        <Button type="submit" variant="secondary">
+          <Plus className="size-4" /> Tambah
+        </Button>
+      </form>
+
+      {q.isLoading ? (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" /> Memuat kode merchant…
+        </p>
+      ) : list.length ? (
+        <>
+          <p className="text-xs text-muted-foreground">
+            {list.length} kode{draft ? " · ada perubahan belum disimpan" : ""}
+          </p>
+          <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(19rem,1fr))]">
+            {list.map((m, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-2 rounded-2xl border border-input bg-background/60 p-2"
+              >
+                <Input
+                  aria-label="Kode"
+                  value={m.shortcut}
+                  maxLength={12}
+                  className="h-9 w-16 shrink-0 px-2 text-center font-mono text-xs"
+                  onChange={(e) => patch(i, { shortcut: e.target.value.trim().toLowerCase() })}
+                />
+                <Input
+                  aria-label="Nama merchant"
+                  value={m.merchant}
+                  maxLength={80}
+                  className="h-9 min-w-0 flex-1"
+                  onChange={(e) => patch(i, { merchant: e.target.value })}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 shrink-0"
+                  aria-label={`Hapus ${m.merchant}`}
+                  onClick={() => setDraft(list.filter((_, idx) => idx !== i))}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="text-sm text-muted-foreground">Belum ada kode merchant.</p>
       )}
     </div>
   );
@@ -1156,7 +1351,7 @@ const tabGroups: { title: string; tabs: { key: TabKey; label: string }[] }[] = [
     tabs: [
       { key: "bagian", label: "Bagian & Pekerja" },
       { key: "rotasi", label: "Rotasi Harian" },
-      { key: "kehadiran", label: "Pilihan Kehadiran" },
+      { key: "kehadiran", label: "Fast Typing" },
       { key: "logo", label: "Logo" },
     ],
   },
@@ -1253,26 +1448,23 @@ function Page() {
           </p>
         </div>
 
-        <nav
-          aria-label="Menu absensi doa pagi"
-          className="flex flex-wrap items-end gap-x-6 gap-y-3 border-b border-input pb-3"
-        >
+        <nav aria-label="Menu absensi doa pagi" className="flex flex-wrap items-stretch gap-3">
           {tabGroups.map((g) => (
-            <div key={g.title} className="space-y-1.5">
-              <p className="pl-2 text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
+            <div key={g.title} className="glass-card space-y-2 rounded-2xl border border-input p-3">
+              <p className="border-b border-input pb-1.5 text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
                 {g.title}
               </p>
-              <div className="flex flex-wrap gap-1 rounded-full border border-input bg-muted/40 p-1">
+              <div className="flex flex-wrap gap-1.5">
                 {g.tabs.map((t) => (
                   <button
                     key={t.key}
                     type="button"
                     aria-current={tab === t.key ? "page" : undefined}
                     onClick={() => setTab(t.key)}
-                    className={`rounded-full px-4 py-1.5 text-sm font-medium whitespace-nowrap transition ${
+                    className={`rounded-xl border px-4 py-2 text-sm font-medium whitespace-nowrap transition ${
                       tab === t.key
-                        ? "bg-primary text-primary-foreground shadow"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "border-primary bg-primary text-primary-foreground shadow"
+                        : "border-input bg-background/60 text-muted-foreground hover:border-primary/50 hover:text-foreground"
                     }`}
                   >
                     {t.label}
@@ -1281,7 +1473,7 @@ function Page() {
               </div>
             </div>
           ))}
-          <div className="ml-auto">
+          <div className="ml-auto self-end">
             <ResetDataButton />
           </div>
         </nav>
@@ -1293,7 +1485,7 @@ function Page() {
         ) : tab === "logo" ? (
           <LogoSettings />
         ) : tab === "kehadiran" ? (
-          <KehadiranSettings />
+          <FastTypingSettings />
         ) : tab === "rotasi" ? (
           <RotationSettings />
         ) : (

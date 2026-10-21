@@ -91,7 +91,11 @@ export async function listEmployees(
   const [{ data: titles }, empRes] = await Promise.all([
     db.from("job_titles").select("id,nama_jabatan"),
     (() => {
-      let q = db.from("employees").select("nama,jabatan_id,uker_id").order("nama", { ascending: true }).limit(2000);
+      let q = db
+        .from("employees")
+        .select("nama,jabatan_id,uker_id")
+        .order("nama", { ascending: true })
+        .limit(2000);
       if (ukerId) q = q.eq("uker_id", ukerId);
       return q;
     })(),
@@ -115,8 +119,6 @@ export async function listEmployees(
   }
   return out;
 }
-
-
 
 export async function listSections(ukerId?: string | null): Promise<DoaPagiSection[]> {
   const db = await admin();
@@ -146,11 +148,7 @@ export async function saveSection(payload: SectionPayload) {
     if (error) throw new Error(error.message);
     return payload.id;
   }
-  const { data, error } = await db
-    .from("doa_pagi_sections")
-    .insert(row)
-    .select("id")
-    .maybeSingle();
+  const { data, error } = await db.from("doa_pagi_sections").insert(row).select("id").maybeSingle();
   if (error) throw new Error(error.message);
   return String(data?.id);
 }
@@ -225,20 +223,18 @@ export async function searchQrisMerchants(
 /** Pengaturan logo header tampilan absensi. */
 export async function getLogoSettings(): Promise<DoaLogoSettings> {
   const db = await admin();
-  const { data } = await db
-    .from("doa_pagi_logos")
-    .select("data")
-    .eq("id", "default")
-    .maybeSingle();
+  const { data } = await db.from("doa_pagi_logos").select("data").eq("id", "default").maybeSingle();
   return normalizeDoaLogos((data as { data?: unknown } | null)?.data);
 }
 
 export async function saveLogoSettings(value: DoaLogoSettings) {
   const db = await admin();
-  const { error } = await db.from("doa_pagi_logos").upsert(
-    { id: "default", data: normalizeDoaLogos(value), updated_at: new Date().toISOString() },
-    { onConflict: "id" },
-  );
+  const { error } = await db
+    .from("doa_pagi_logos")
+    .upsert(
+      { id: "default", data: normalizeDoaLogos(value), updated_at: new Date().toISOString() },
+      { onConflict: "id" },
+    );
   if (error) throw new Error(error.message);
 }
 
@@ -323,6 +319,35 @@ export async function saveKehadiranOptions(options: KehadiranOption[]) {
     {
       id: "default",
       data: normalizeKehadiranOptions(options),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "id" },
+  );
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Kode singkat merchant QRIS. Disimpan pada tabel yang sama dengan pilihan kehadiran
+ * (baris id "merchant-shortcuts") sehingga tidak perlu migrasi database baru.
+ */
+export async function getMerchantShortcuts() {
+  const { normalizeMerchantShortcuts } = await import("@/lib/doa-pagi-ui");
+  const db = await admin();
+  const { data } = await db
+    .from("doa_pagi_kehadiran_options")
+    .select("data")
+    .eq("id", "merchant-shortcuts")
+    .maybeSingle();
+  return normalizeMerchantShortcuts((data as { data?: unknown } | null)?.data);
+}
+
+export async function saveMerchantShortcuts(list: { shortcut: string; merchant: string }[]) {
+  const { normalizeMerchantShortcuts } = await import("@/lib/doa-pagi-ui");
+  const db = await admin();
+  const { error } = await db.from("doa_pagi_kehadiran_options").upsert(
+    {
+      id: "merchant-shortcuts",
+      data: normalizeMerchantShortcuts(list),
       updated_at: new Date().toISOString(),
     },
     { onConflict: "id" },

@@ -5,6 +5,7 @@ import type {
   DoaPagiSection,
   DoaRotationSettings,
   KehadiranOption,
+  MerchantShortcut,
 } from "@/lib/doa-pagi-ui";
 
 /** Daftar unit kerja untuk popup pilihan. */
@@ -66,9 +67,8 @@ export const searchDoaPagiQris = createServerFn({ method: "POST" })
 export const getDoaPagiSettings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { assertAdmin, listUkers, listSections, listEmployees } = await import(
-      "@/lib/doa-pagi.server"
-    );
+    const { assertAdmin, listUkers, listSections, listEmployees } =
+      await import("@/lib/doa-pagi.server");
     await assertAdmin(context.userId);
     const [ukers, sections, employees] = await Promise.all([
       listUkers(),
@@ -170,6 +170,25 @@ export const saveDoaPagiKehadiranOptions = createServerFn({ method: "POST" })
     const { assertAdmin, saveKehadiranOptions } = await import("@/lib/doa-pagi.server");
     await assertAdmin(context.userId);
     await saveKehadiranOptions(data.options);
+    return { ok: true };
+  });
+
+/** Kode singkat merchant QRIS (dibaca tampilan absensi). */
+export const getDoaPagiMerchantShortcuts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { getMerchantShortcuts } = await import("@/lib/doa-pagi.server");
+    return { shortcuts: await getMerchantShortcuts() };
+  });
+
+/** Simpan kode singkat merchant QRIS (khusus admin). */
+export const saveDoaPagiMerchantShortcuts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { shortcuts: MerchantShortcut[] }) => data)
+  .handler(async ({ data, context }) => {
+    const { assertAdmin, saveMerchantShortcuts } = await import("@/lib/doa-pagi.server");
+    await assertAdmin(context.userId);
+    await saveMerchantShortcuts(data.shortcuts);
     return { ok: true };
   });
 

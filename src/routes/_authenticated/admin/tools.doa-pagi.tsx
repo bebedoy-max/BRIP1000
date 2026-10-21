@@ -14,6 +14,8 @@ import {
   QRIS_KOSONG,
   isQrisFilled,
   matchKehadiran,
+  matchMerchantShortcut,
+  type MerchantShortcut,
   defaultKehadiranOptions,
   recordKey,
   toIsoDate,
@@ -32,6 +34,7 @@ import {
 import {
   getDoaPagiBoard,
   getDoaPagiKehadiranOptions,
+  getDoaPagiMerchantShortcuts,
   getDoaPagiLogos,
   getDoaPagiRotation,
   listDoaPagiUkers,
@@ -92,9 +95,7 @@ function UkerDialog({ onPick }: { onPick: (u: { id: string; nama: string }) => v
                 className="flex w-full items-center justify-between rounded-xl border border-border/60 px-4 py-3 text-left text-sm transition hover:bg-muted/40"
               >
                 <span className="font-medium">{u.nama}</span>
-                <span className="text-xs text-muted-foreground">
-                  {counts[u.id] ?? 0} bagian
-                </span>
+                <span className="text-xs text-muted-foreground">{counts[u.id] ?? 0} bagian</span>
               </button>
             ))}
           </div>
@@ -127,7 +128,6 @@ function DayMark({ state, anim }: { state: "ok" | "no" | "empty" | "blank"; anim
     </span>
   );
 }
-
 
 /** Ukuran & pergeseran logo sesuai pengaturan admin. */
 function logoStyle(l: DoaLogo): CSSProperties {
@@ -231,85 +231,83 @@ function SectionScreen({
 
         {section.pekerja.length ? (
           <>
-          {/* Ruang kosong atas agar baris pertama tepat di tengah layar. */}
-          {solo ? null : <div className="doa-spacer" aria-hidden />}
-          {section.pekerja.map((nama, row) => {
-            const key = recordKey(section.id, nama, today);
-            const cell = draft[key] ?? { qris: "", kehadiran: "" };
-            const idx = inputIndexOf(section.id, row);
-            const dist = Math.min(Math.abs(idx - activeIdx), 3);
-            return (
-              <div
-                key={nama}
-                className={`doa-row${solo ? " doa-row-solo" : " doa-row-zoom"}`}
-                data-dist={solo ? undefined : dist}
-                data-active={!solo && idx === activeIdx ? "true" : undefined}
-              >
-                <div className="doa-pill doa-name">{nama}</div>
-                <div className="doa-pill doa-jabatan">{jabatanOf(nama)}</div>
+            {/* Ruang kosong atas agar baris pertama tepat di tengah layar. */}
+            {solo ? null : <div className="doa-spacer" aria-hidden />}
+            {section.pekerja.map((nama, row) => {
+              const key = recordKey(section.id, nama, today);
+              const cell = draft[key] ?? { qris: "", kehadiran: "" };
+              const idx = inputIndexOf(section.id, row);
+              const dist = Math.min(Math.abs(idx - activeIdx), 3);
+              return (
+                <div
+                  key={nama}
+                  className={`doa-row${solo ? " doa-row-solo" : " doa-row-zoom"}`}
+                  data-dist={solo ? undefined : dist}
+                  data-active={!solo && idx === activeIdx ? "true" : undefined}
+                >
+                  <div className="doa-pill doa-name">{nama}</div>
+                  <div className="doa-pill doa-jabatan">{jabatanOf(nama)}</div>
 
-                <div className="doa-days">
-                  {dates.map((d) => {
-                    const markKey = recordKey(section.id, nama, d);
-                    const rec = committed[markKey];
-                    // Silang hanya bila QRIS diisi "Kosong" secara eksplisit.
-                    // Hari lampau tanpa data dibiarkan polos, hari ini/mendatang bulat putih.
-                    const state = isQrisFilled(rec?.qris)
-                      ? "ok"
-                      : rec?.qris === QRIS_KOSONG
-                        ? "no"
-                        : !rec && d < today
-                          ? "blank"
-                          : "empty";
-                    return <DayMark key={d} state={state} anim={animKey === markKey} />;
-                  })}
+                  <div className="doa-days">
+                    {dates.map((d) => {
+                      const markKey = recordKey(section.id, nama, d);
+                      const rec = committed[markKey];
+                      // Silang hanya bila QRIS diisi "Kosong" secara eksplisit.
+                      // Hari lampau tanpa data dibiarkan polos, hari ini/mendatang bulat putih.
+                      const state = isQrisFilled(rec?.qris)
+                        ? "ok"
+                        : rec?.qris === QRIS_KOSONG
+                          ? "no"
+                          : !rec && d < today
+                            ? "blank"
+                            : "empty";
+                      return <DayMark key={d} state={state} anim={animKey === markKey} />;
+                    })}
+                  </div>
+                  <div className="doa-pill doa-input-wrap">
+                    <input
+                      ref={(el) => registerInput(idx, el)}
+                      value={cell.qris}
+                      list="doa-qris-list"
 
-                </div>
-                <div className="doa-pill doa-input-wrap">
-                  <input
-                    ref={(el) => registerInput(idx, el)}
-                    value={cell.qris}
-                    list="doa-qris-list"
-                    
-                    onChange={(e) => onChangeQris(nama, e.target.value)}
-                    onFocus={() => onFocusRow(idx)}
-                    onBlur={() => {
-                      if (cell.qris.trim()) onCommit(nama);
-                    }}
+                      onChange={(e) => onChangeQris(nama, e.target.value)}
+                      onFocus={() => onFocusRow(idx)}
+                      onBlur={() => {
+                        if (cell.qris.trim()) onCommit(nama);
+                      }}
 
-                    onKeyDown={(e) => {
-                      if (e.key !== "Enter") return;
-                      e.preventDefault();
-                      onCommit(nama);
-                      focusNext(idx);
-                    }}
-                    className="doa-input"
-                  />
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        e.preventDefault();
+                        onCommit(nama);
+                        focusNext(idx);
+                      }}
+                      className="doa-input"
+                    />
+                  </div>
+                  <div className="doa-pill">
+                    <select
+                      value={cell.kehadiran}
+                      onChange={(e) => onChangeKehadiran(nama, e.target.value)}
+                      className="doa-select"
+                    >
+                      <option value=""></option>
+                      {/* Nilai tersimpan yang belum ada di daftar tetap bisa tampil. */}
+                      {cell.kehadiran && !options.some((o) => o.label === cell.kehadiran) ? (
+                        <option value={cell.kehadiran}>{cell.kehadiran}</option>
+                      ) : null}
+                      {options.map((o) => (
+                        <option key={o.label} value={o.label}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-                <div className="doa-pill">
-                  <select
-                    value={cell.kehadiran}
-                    onChange={(e) => onChangeKehadiran(nama, e.target.value)}
-                    className="doa-select"
-                  >
-                    <option value=""></option>
-                    {/* Nilai tersimpan yang belum ada di daftar tetap bisa tampil. */}
-                    {cell.kehadiran &&
-                    !options.some((o) => o.label === cell.kehadiran) ? (
-                      <option value={cell.kehadiran}>{cell.kehadiran}</option>
-                    ) : null}
-                    {options.map((o) => (
-                      <option key={o.label} value={o.label}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            );
-          })}
-          {/* Ruang kosong bawah agar baris terakhir tetap bisa ke tengah. */}
-          {solo ? null : <div className="doa-spacer doa-spacer-end" aria-hidden />}
+              );
+            })}
+            {/* Ruang kosong bawah agar baris terakhir tetap bisa ke tengah. */}
+            {solo ? null : <div className="doa-spacer doa-spacer-end" aria-hidden />}
           </>
         ) : (
           <p className="doa-empty">
@@ -438,7 +436,6 @@ function OpeningScreen({
   );
 }
 
-
 function Page() {
   const [uker, setUker] = useState<{ id: string; nama: string } | null>(null);
   const dates = useMemo(() => workWeekDates(), []);
@@ -464,7 +461,11 @@ function Page() {
     queryFn: () => getDoaPagiKehadiranOptions(),
   });
   const options: KehadiranOption[] = optionQuery.data?.options ?? defaultKehadiranOptions;
-
+  const merchantQuery = useQuery({
+    queryKey: ["doa-pagi", "merchant-shortcuts"],
+    queryFn: () => getDoaPagiMerchantShortcuts(),
+  });
+  const merchantShortcuts: MerchantShortcut[] = merchantQuery.data?.shortcuts ?? [];
 
   const [draft, setDraft] = useState<Draft>({});
   // Penanda harian (ceklis/silang) hanya memakai data yang sudah dikunci Enter.
@@ -492,7 +493,6 @@ function Page() {
     return () => window.clearTimeout(t);
   }, [started]);
 
-
   const rotationQuery = useQuery({
     queryKey: ["doa-pagi", "rotasi"],
     queryFn: () => getDoaPagiRotation(),
@@ -519,7 +519,6 @@ function Page() {
     if (lockKey) window.localStorage.removeItem(lockKey);
     setLocked(false);
   }, [lockKey]);
-
 
   useEffect(() => {
     if (!board.data) return;
@@ -573,7 +572,6 @@ function Page() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-
   const suggest = useQuery({
     queryKey: ["doa-pagi", "qris", term],
     enabled: term.trim().length >= 2,
@@ -610,26 +608,26 @@ function Page() {
     return s
       .trim()
       .replace(/\s+/g, " ")
-      .replace(
-        /\S+/g,
-        (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(),
-      );
+      .replace(/\S+/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
   }
 
   function commit(sectionId: string, pekerja: string) {
     const k = recordKey(sectionId, pekerja, today);
     const cur = draft[k] ?? { qris: "", kehadiran: "" };
     const code = matchKehadiran(cur.qris, options);
+    const merchant = code ? null : matchMerchantShortcut(cur.qris, merchantShortcuts);
     // Enter pada kolom QRIS kosong: tandai "Kosong" + "Hadir" (bulatan silang).
     const value = !cur.qris.trim()
       ? { qris: QRIS_KOSONG, kehadiran: "Hadir" }
       : code
         ? { qris: QRIS_KOSONG, kehadiran: code }
-        : {
-            qris: titleCase(cur.qris),
-            // Ada absen QRIS -> kehadiran selalu "Hadir".
-            kehadiran: isQrisFilled(cur.qris) ? "Hadir" : cur.kehadiran,
-          };
+        : merchant
+          ? { qris: merchant, kehadiran: "Hadir" }
+          : {
+              qris: titleCase(cur.qris),
+              // Ada absen QRIS -> kehadiran selalu "Hadir".
+              kehadiran: isQrisFilled(cur.qris) ? "Hadir" : cur.kehadiran,
+            };
     updateCell(sectionId, pekerja, value);
 
     const k2 = recordKey(sectionId, pekerja, today);
@@ -658,7 +656,6 @@ function Page() {
         }}
       />
     );
-
 
   // Absensi hari ini dianggap selesai bila seluruh pekerja sudah punya data tersimpan.
   const filledToday = new Set(
@@ -696,7 +693,6 @@ function Page() {
   if (savedToday) {
     const tanggalPanjang = longDate(today);
     return (
-
       <div className="doa-root">
         <button
           type="button"
@@ -734,10 +730,6 @@ function Page() {
       </div>
     );
   }
-
-
-
-
 
   return (
     <div className="doa-root">

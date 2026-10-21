@@ -124,6 +124,32 @@ export function matchKehadiran(value: string, options: KehadiranOption[]): strin
   return null;
 }
 
+/** Kode singkat untuk mengisi kolom QRIS dengan nama merchant yang sering disebut. */
+export type MerchantShortcut = { shortcut: string; merchant: string };
+
+export function normalizeMerchantShortcuts(raw: unknown): MerchantShortcut[] {
+  const arr = Array.isArray(raw) ? raw : [];
+  const out: MerchantShortcut[] = [];
+  const seen = new Set<string>();
+  for (const item of arr) {
+    const o = (item ?? {}) as Partial<MerchantShortcut>;
+    const merchant = String(o.merchant ?? "").trim();
+    const shortcut = String(o.shortcut ?? "")
+      .trim()
+      .toLowerCase();
+    if (!merchant || !shortcut || seen.has(shortcut)) continue;
+    seen.add(shortcut);
+    out.push({ shortcut, merchant });
+  }
+  return out;
+}
+
+/** Cari nama merchant dari kode singkat yang diketik pada kolom QRIS. */
+export function matchMerchantShortcut(value: string, list: MerchantShortcut[]): string | null {
+  const v = value.trim().toLowerCase();
+  if (!v) return null;
+  return list.find((m) => m.shortcut === v)?.merchant ?? null;
+}
 
 /** Kolom hari kerja pada tampilan: S (Senin), S (Selasa), R, K, J. */
 export const weekdayLabels = ["S", "S", "R", "K", "J"] as const;
