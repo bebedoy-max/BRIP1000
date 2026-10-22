@@ -1,7 +1,7 @@
 import { createContext, useState, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, LogOut, Menu, X } from "lucide-react";
+import { ChevronDown, LogOut, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { menuTree, useAccess } from "@/lib/access";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import logoUrl from "@/assets/logo.png";
 import { AuthSplash } from "@/components/AuthSplash";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import { MobileNav } from "@/components/MobileNav";
 import { usePresenceHeartbeat, useSelfBlocked } from "@/lib/users";
 
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -44,7 +45,9 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         }
         const children = node.keys.map((k) => byKey.get(k)).filter(Boolean) as typeof visibleMenus;
         if (!children.length) return null;
-        const hasActive = children.some((c) => pathname === c.to || pathname.startsWith(`${c.to}/`));
+        const hasActive = children.some(
+          (c) => pathname === c.to || pathname.startsWith(`${c.to}/`),
+        );
         const expanded = open[node.key] ?? hasActive;
         return (
           <div key={node.key}>
@@ -55,7 +58,9 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             >
               <node.icon className="size-4" />
               <span className="flex-1 text-left">{node.label}</span>
-              <ChevronDown className={`size-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
+              <ChevronDown
+                className={`size-4 transition-transform ${expanded ? "rotate-180" : ""}`}
+              />
             </button>
             {expanded ? (
               <div className="ml-4 mt-1 flex flex-col gap-1 border-l border-border/60 pl-2">
@@ -73,7 +78,6 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     </nav>
   );
 }
-
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const { session, levelLabel } = useAccess();
@@ -139,7 +143,12 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           }`}
         >
           <div className="flex justify-end">
-            <Button variant="ghost" size="icon" aria-label="Tutup menu" onClick={() => setMenuOpen(false)}>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Tutup menu"
+              onClick={() => setMenuOpen(false)}
+            >
               <X className="size-5" />
             </Button>
           </div>
@@ -149,19 +158,14 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
       <div className="min-w-0 flex-1">
         <header className="sticky top-0 z-40 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-b border-border/60 bg-background/60 p-3 backdrop-blur-xl lg:flex lg:justify-end">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="shrink-0 lg:hidden"
-            aria-label="Buka menu"
-            onClick={() => setMenuOpen(true)}
-          >
-            <Menu className="size-5" />
-          </Button>
+          <Link to="/admin" aria-label="Beranda" className="shrink-0 lg:hidden">
+            <img src={logoUrl} alt="BRI BO Pringsewu" className="h-9 w-auto object-contain" />
+          </Link>
           <GlobalSearch className="w-full max-w-md" />
         </header>
-        <main className="p-4 sm:p-6">{children}</main>
+        <main className="p-4 pb-28 sm:p-6 lg:pb-6">{children}</main>
       </div>
+      <MobileNav onOpenMenu={() => setMenuOpen(true)} />
     </div>
   );
 }
@@ -203,5 +207,3 @@ export function AdminPage({ menuKey, children }: { menuKey: string; children: Re
     </AdminLayout>
   );
 }
-
-

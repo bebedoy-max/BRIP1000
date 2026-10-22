@@ -9,6 +9,7 @@ import { EventSummary } from "@/components/EventSummary";
 import { DiarySummary } from "@/components/DiarySummary";
 import { InfographicStats } from "@/components/home/InfographicStats";
 import { HomeCarousel } from "@/components/home/HomeCarousel";
+import { MobileHome } from "@/components/home/MobileHome";
 import { WorkerSlider } from "@/components/home/WorkerSlider";
 import { MarketPanel } from "@/components/home/MarketPanel";
 import { BankRatesPanel } from "@/components/home/BankRatesPanel";
@@ -52,13 +53,55 @@ function Page() {
   });
 
   const cards = [
-    { label: "Unit Kerja", value: stats.data?.ukers ?? "—", icon: Building2, hint: "Uker aktif terdaftar", detailKey: "uker" },
-    { label: "ATM/CRM", value: stats.data?.atm ?? "—", icon: Banknote, hint: "Termonitor", detailKey: "atm" },
-    { label: "Mesin EDC", value: stats.data?.edc ?? "—", icon: CreditCard, hint: "Merchant terpasang", detailKey: "edc" },
-    { label: "Qris", value: stats.data?.qris ?? "—", icon: QrCode, hint: "Merchant QRIS", detailKey: "qris" },
-    { label: "Pegawai", value: stats.data?.employees ?? "—", icon: Users, hint: "Seluruh unit kerja", detailKey: "pegawai" },
-    { label: "Project IT", value: stats.data?.projects ?? "—", icon: CalendarDays, hint: "Project berjalan", detailKey: "project" },
-    { label: "Event", value: stats.data?.events ?? "—", icon: CalendarDays, hint: "Acara & kegiatan", detailKey: "event" },
+    {
+      label: "Unit Kerja",
+      value: stats.data?.ukers ?? "—",
+      icon: Building2,
+      hint: "Uker aktif terdaftar",
+      detailKey: "uker",
+    },
+    {
+      label: "ATM/CRM",
+      value: stats.data?.atm ?? "—",
+      icon: Banknote,
+      hint: "Termonitor",
+      detailKey: "atm",
+    },
+    {
+      label: "Mesin EDC",
+      value: stats.data?.edc ?? "—",
+      icon: CreditCard,
+      hint: "Merchant terpasang",
+      detailKey: "edc",
+    },
+    {
+      label: "Qris",
+      value: stats.data?.qris ?? "—",
+      icon: QrCode,
+      hint: "Merchant QRIS",
+      detailKey: "qris",
+    },
+    {
+      label: "Pegawai",
+      value: stats.data?.employees ?? "—",
+      icon: Users,
+      hint: "Seluruh unit kerja",
+      detailKey: "pegawai",
+    },
+    {
+      label: "Project IT",
+      value: stats.data?.projects ?? "—",
+      icon: CalendarDays,
+      hint: "Project berjalan",
+      detailKey: "project",
+    },
+    {
+      label: "Event",
+      value: stats.data?.events ?? "—",
+      icon: CalendarDays,
+      hint: "Acara & kegiatan",
+      detailKey: "event",
+    },
   ];
 
   const maxStat = Math.max(1, ...cards.map((c) => (typeof c.value === "number" ? c.value : 0)));
@@ -73,11 +116,24 @@ function Page() {
 
   return (
     <AdminLayout>
-      <HomeCarousel />
+      <MobileHome
+        hero={{ label: "Total Pekerja", value: stats.data?.employees ?? "—", detailKey: "pegawai" }}
+        stats={[
+          { label: "ATM / CRM", value: stats.data?.atm ?? "—", detailKey: "atm" },
+          { label: "Mesin EDC", value: stats.data?.edc ?? "—", detailKey: "edc" },
+          { label: "Merchant QRIS", value: stats.data?.qris ?? "—", detailKey: "qris" },
+          { label: "Project IT", value: stats.data?.projects ?? "—", detailKey: "project" },
+        ]}
+      />
+      <div className="mt-4 lg:mt-0">
+        <HomeCarousel />
+      </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-12">
         <div className="grid content-start gap-4 lg:col-span-3">
-          <InfographicStats items={infographics} />
+          <div className="hidden lg:block">
+            <InfographicStats items={infographics} />
+          </div>
           <WorkerSlider />
         </div>
         <div className="grid content-start gap-4 lg:col-span-6">
