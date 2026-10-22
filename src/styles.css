@@ -159,6 +159,13 @@
   }
 }
 
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @utility glass-card {
   position: relative;
   background-image: linear-gradient(

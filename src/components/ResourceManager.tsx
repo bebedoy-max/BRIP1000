@@ -628,6 +628,62 @@ export function ResourceManager({
     return String(v);
   }
 
+  /** Tombol aksi baris (galeri foto, ubah, hapus): dipakai tabel desktop dan kartu mobile. */
+  function rowActions(row: Row) {
+    return (
+      <div className="flex items-center justify-end gap-1">
+        {extraActions?.(row)}
+        {photoEntity ? (
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label="Galeri foto"
+            onClick={() => setPhotoRow(row)}
+          >
+            <Images className="size-4" />
+          </Button>
+        ) : null}
+        {canWrite ? (
+          <>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => {
+                setEditing(row);
+                const next: Row = {};
+                for (const f of formFields) {
+                  next[f.key] = row[f.key] ?? "";
+                  if (f.type === "reftext" && f.textColumn) next[f.textColumn] = cellText(f, row);
+                }
+                setForm(next);
+
+                setOpen(true);
+              }}
+            >
+              <Pencil className="size-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => {
+                void confirmDialog({
+                  title: "Hapus data ini?",
+                  description: "Data yang dihapus tidak dapat dikembalikan.",
+                  confirmText: "Hapus",
+                  destructive: true,
+                }).then((ok) => {
+                  if (ok) remove.mutate(String(row["id"]));
+                });
+              }}
+            >
+              <Trash2 className="size-4 text-destructive" />
+            </Button>
+          </>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -635,15 +691,15 @@ export function ResourceManager({
           <h1 className="text-2xl font-bold">{title}</h1>
           {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <div className="relative min-w-0 flex-1 sm:flex-none">
             <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Cari / filter semua kolom…"
               aria-label={`Cari di ${title}`}
-              className="w-64 pl-9"
+              className="w-full pl-9 sm:w-64"
             />
           </div>
 
@@ -661,7 +717,62 @@ export function ResourceManager({
         </div>
       </div>
 
-      <div className="glass-card overflow-x-auto">
+      {/* Mobile: kartu per baris (semua kolom terbaca, tanpa geser samping) */}
+      <div className="space-y-2.5 md:hidden">
+        {list.isLoading ? (
+          <p className="glass-card px-4 py-8 text-center text-sm text-muted-foreground">
+            Memuat data…
+          </p>
+        ) : rows.length === 0 ? (
+          <p className="glass-card px-4 py-8 text-center text-sm text-muted-foreground">
+            Belum ada data.
+          </p>
+        ) : (
+          visibleRows.map((row) => {
+            const [titleField, subField, ...restFields] = tableFields;
+            const id = String(row["id"]);
+            return (
+              <article
+                key={id}
+                className={`glass-card space-y-2.5 rounded-2xl p-3.5 ${
+                  id === focusId ? "ring-1 ring-primary/50" : ""
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[15px] leading-snug font-bold break-words">
+                      {titleField ? renderCell(titleField, row) : null}
+                    </div>
+                    {subField ? (
+                      <div className="mt-0.5 text-xs text-muted-foreground break-words">
+                        {renderCell(subField, row)}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="shrink-0">{rowActions(row)}</div>
+                </div>
+                {restFields.length ? (
+                  <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-border/50 pt-2.5 text-xs">
+                    {restFields.map((f) => (
+                      <div key={f.key} className="min-w-0">
+                        <dt className="text-[10.5px] font-semibold tracking-wide text-muted-foreground uppercase">
+                          {f.label}
+                        </dt>
+                        <dd className="break-words">{renderCell(f, row)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                ) : null}
+                {extraColumn ? (
+                  <div className="border-t border-border/50 pt-2.5">{extraColumn.render(row)}</div>
+                ) : null}
+              </article>
+            );
+          })
+        )}
+      </div>
+
+      <div className="glass-card hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border/60 text-left text-xs tracking-wide text-muted-foreground uppercase">
@@ -712,59 +823,7 @@ export function ResourceManager({
                   {extraColumn ? (
                     <td className="px-4 py-3 whitespace-nowrap">{extraColumn.render(row)}</td>
                   ) : null}
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
-                    <div className="flex items-center justify-end gap-1">
-                      {extraActions?.(row)}
-                      {photoEntity ? (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          aria-label="Galeri foto"
-                          onClick={() => setPhotoRow(row)}
-                        >
-                          <Images className="size-4" />
-                        </Button>
-                      ) : null}
-                      {canWrite ? (
-                        <>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => {
-                              setEditing(row);
-                              const next: Row = {};
-                              for (const f of formFields) {
-                                next[f.key] = row[f.key] ?? "";
-                                if (f.type === "reftext" && f.textColumn)
-                                  next[f.textColumn] = cellText(f, row);
-                              }
-                              setForm(next);
-
-                              setOpen(true);
-                            }}
-                          >
-                            <Pencil className="size-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => {
-                              void confirmDialog({
-                                title: "Hapus data ini?",
-                                description: "Data yang dihapus tidak dapat dikembalikan.",
-                                confirmText: "Hapus",
-                                destructive: true,
-                              }).then((ok) => {
-                                if (ok) remove.mutate(String(row["id"]));
-                              });
-                            }}
-                          >
-                            <Trash2 className="size-4 text-destructive" />
-                          </Button>
-                        </>
-                      ) : null}
-                    </div>
-                  </td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">{rowActions(row)}</td>
                 </tr>
               ))
             )}

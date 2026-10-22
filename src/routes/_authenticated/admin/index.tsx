@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Banknote, Building2, CalendarDays, CreditCard, QrCode, Users } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -38,7 +39,18 @@ async function count(table: string) {
   return c ?? 0;
 }
 
+type MobileTab = "info" | "berita" | "pasar" | "agenda";
+const mobileTabs: { key: MobileTab; label: string }[] = [
+  { key: "info", label: "Info" },
+  { key: "berita", label: "Berita" },
+  { key: "pasar", label: "Pasar & Kurs" },
+  { key: "agenda", label: "Agenda" },
+];
+
 function Page() {
+  // Mobile: satu kelompok panel per tab agar halaman tidak panjang berlapis.
+  const [mTab, setMTab] = useState<MobileTab>("info");
+  const show = (t: MobileTab) => (mTab === t ? "" : "hidden lg:block");
   const stats = useQuery({
     queryKey: ["admin-stats"],
     queryFn: async () => ({
@@ -129,21 +141,56 @@ function Page() {
         <HomeCarousel />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-12">
+      <div
+        role="tablist"
+        aria-label="Panel informasi"
+        className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 lg:hidden"
+      >
+        {mobileTabs.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={mTab === t.key}
+            onClick={() => setMTab(t.key)}
+            className={`h-9 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors ${
+              mTab === t.key
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card/60 text-muted-foreground"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 grid gap-4 lg:mt-4 lg:grid-cols-12">
         <div className="grid content-start gap-4 lg:col-span-3">
           <div className="hidden lg:block">
             <InfographicStats items={infographics} />
           </div>
-          <WorkerSlider />
+          <div className={show("info")}>
+            <WorkerSlider />
+          </div>
         </div>
         <div className="grid content-start gap-4 lg:col-span-6">
-          <InfoBoard />
-          <NewsPanel />
+          <div className={show("info")}>
+            <InfoBoard />
+          </div>
+          <div className={show("berita")}>
+            <NewsPanel />
+          </div>
         </div>
         <div className="grid content-start gap-4 lg:col-span-3">
-          <MarketPanel />
-          <BankRatesPanel />
-          <UpcomingEvents />
+          <div className={show("pasar")}>
+            <MarketPanel />
+          </div>
+          <div className={show("pasar")}>
+            <BankRatesPanel />
+          </div>
+          <div className={show("agenda")}>
+            <UpcomingEvents />
+          </div>
         </div>
       </div>
 
