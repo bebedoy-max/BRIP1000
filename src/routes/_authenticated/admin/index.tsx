@@ -11,6 +11,8 @@ import { DiarySummary } from "@/components/DiarySummary";
 import { InfographicStats } from "@/components/home/InfographicStats";
 import { HomeCarousel } from "@/components/home/HomeCarousel";
 import { MobileHome } from "@/components/home/MobileHome";
+import { DesktopHome } from "@/components/home/DesktopHome";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { WorkerSlider } from "@/components/home/WorkerSlider";
 import { MarketPanel } from "@/components/home/MarketPanel";
 import { BankRatesPanel } from "@/components/home/BankRatesPanel";
@@ -50,6 +52,7 @@ const mobileTabs: { key: MobileTab; label: string }[] = [
 function Page() {
   // Mobile: satu kelompok panel per tab agar halaman tidak panjang berlapis.
   const [mTab, setMTab] = useState<MobileTab>("info");
+  const desktop = useMediaQuery("(min-width: 1024px)");
   const show = (t: MobileTab) => (mTab === t ? "" : "hidden lg:block");
   const stats = useQuery({
     queryKey: ["admin-stats"],
@@ -128,77 +131,83 @@ function Page() {
 
   return (
     <AdminLayout>
-      <MobileHome
-        hero={{
-          label: "Total pekerja aktif",
-          value: stats.data?.employees ?? "—",
-          detailKey: "pegawai",
-        }}
-        subtitle={`${stats.data?.ukers ?? "—"} unit kerja · ${stats.data?.projects ?? "—"} project berjalan`}
-        stats={[
-          { label: "ATM/CRM", value: stats.data?.atm ?? "—", detailKey: "atm" },
-          { label: "EDC", value: stats.data?.edc ?? "—", detailKey: "edc" },
-          { label: "QRIS", value: stats.data?.qris ?? "—", detailKey: "qris" },
-          { label: "Event", value: stats.data?.events ?? "—", detailKey: "event" },
-        ]}
-      />
-      <div className="mt-4 grid gap-4 lg:mt-0 xl:grid-cols-[minmax(0,1fr)_350px]">
-        <div className="xl:col-start-1 xl:row-start-1">
-          <HomeCarousel />
-        </div>
+      {desktop ? (
+        <DesktopHome infographics={infographics} />
+      ) : (
+        <>
+          <MobileHome
+            hero={{
+              label: "Total pekerja aktif",
+              value: stats.data?.employees ?? "—",
+              detailKey: "pegawai",
+            }}
+            subtitle={`${stats.data?.ukers ?? "—"} unit kerja · ${stats.data?.projects ?? "—"} project berjalan`}
+            stats={[
+              { label: "ATM/CRM", value: stats.data?.atm ?? "—", detailKey: "atm" },
+              { label: "EDC", value: stats.data?.edc ?? "—", detailKey: "edc" },
+              { label: "QRIS", value: stats.data?.qris ?? "—", detailKey: "qris" },
+              { label: "Event", value: stats.data?.events ?? "—", detailKey: "event" },
+            ]}
+          />
+          <div className="mt-4 grid gap-4 lg:mt-0 xl:grid-cols-[minmax(0,1fr)_350px]">
+            <div className="xl:col-start-1 xl:row-start-1">
+              <HomeCarousel />
+            </div>
 
-        <div
-          role="tablist"
-          aria-label="Panel informasi"
-          className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 lg:hidden"
-        >
-          {mobileTabs.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              role="tab"
-              aria-selected={mTab === t.key}
-              onClick={() => setMTab(t.key)}
-              className={`h-9 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors ${
-                mTab === t.key
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card/60 text-muted-foreground"
-              }`}
+            <div
+              role="tablist"
+              aria-label="Panel informasi"
+              className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 lg:hidden"
             >
-              {t.label}
-            </button>
-          ))}
-        </div>
+              {mobileTabs.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={mTab === t.key}
+                  onClick={() => setMTab(t.key)}
+                  className={`h-9 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors ${
+                    mTab === t.key
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card/60 text-muted-foreground"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
 
-        {/* Kolom utama: papan informasi + berita, lalu slide pekerja + suku bunga */}
-        <div className="grid content-start gap-4 lg:grid-cols-2 xl:col-start-1 xl:row-start-2">
-          <div className={show("info")}>
-            <InfoBoard />
-          </div>
-          <div className={show("berita")}>
-            <NewsPanel />
-          </div>
-          <div className={show("info")}>
-            <WorkerSlider />
-          </div>
-          <div className={show("pasar")}>
-            <BankRatesPanel />
-          </div>
-        </div>
+            {/* Kolom utama: papan informasi + berita, lalu slide pekerja + suku bunga */}
+            <div className="grid content-start gap-4 lg:grid-cols-2 xl:col-start-1 xl:row-start-2">
+              <div className={show("info")}>
+                <InfoBoard />
+              </div>
+              <div className={show("berita")}>
+                <NewsPanel />
+              </div>
+              <div className={show("info")}>
+                <WorkerSlider />
+              </div>
+              <div className={show("pasar")}>
+                <BankRatesPanel />
+              </div>
+            </div>
 
-        {/* Rel kanan (desktop lebar): infografis, pasar, agenda */}
-        <div className="grid content-start gap-4 md:grid-cols-2 xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:grid-cols-1">
-          <div className="hidden lg:block">
-            <InfographicStats items={infographics} />
+            {/* Rel kanan (desktop lebar): infografis, pasar, agenda */}
+            <div className="grid content-start gap-4 md:grid-cols-2 xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:grid-cols-1">
+              <div className="hidden lg:block">
+                <InfographicStats items={infographics} />
+              </div>
+              <div className={show("pasar")}>
+                <MarketPanel />
+              </div>
+              <div className={show("agenda")}>
+                <UpcomingEvents />
+              </div>
+            </div>
           </div>
-          <div className={show("pasar")}>
-            <MarketPanel />
-          </div>
-          <div className={show("agenda")}>
-            <UpcomingEvents />
-          </div>
-        </div>
-      </div>
+        </>
+      )}
 
       <section className="mt-10 border-t border-border/60 pt-8">
         <h2 className="event-title-glow mb-1 text-lg">The Event's BRI BO Pringsewu</h2>

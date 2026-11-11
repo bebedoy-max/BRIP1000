@@ -26,7 +26,7 @@ const GLOW: Record<string, { ring: string; shadow: string; sheen: string }> = {
 };
 
 /** Panel info pasar: saham BBRI, kurs dolar, dan harga emas. */
-export function MarketPanel() {
+export function MarketPanel({ embedded = false }: { embedded?: boolean }) {
   const q = useQuery({
     queryKey: ["market-quotes"],
     queryFn: () => getMarketQuotes(),
@@ -35,8 +35,14 @@ export function MarketPanel() {
   const rows = q.data ?? [];
 
   return (
-    <div className="glass-card flex h-full flex-col gap-3 p-5">
-      <PanelLabel icon={ChartNoAxesCombined} label="Info Pasar" accent="market" />
+    <div
+      className={
+        embedded ? "flex h-full flex-col gap-3" : "glass-card flex h-full flex-col gap-3 p-5"
+      }
+    >
+      {embedded ? null : (
+        <PanelLabel icon={ChartNoAxesCombined} label="Info Pasar" accent="market" />
+      )}
       {q.isLoading ? <p className="text-sm text-muted-foreground">Memuat data pasar…</p> : null}
       {!q.isLoading && !rows.length ? (
         <p className="text-sm text-muted-foreground">Data pasar belum tersedia.</p>
@@ -63,7 +69,9 @@ export function MarketPanel() {
               <div className="mt-1 flex items-center gap-1.5 text-xs">
                 <span className="text-muted-foreground">{r.unit}</span>
                 {r.change !== null ? (
-                  <span className={`flex items-center gap-1 ${up ? "text-accent" : "text-destructive"}`}>
+                  <span
+                    className={`flex items-center gap-1 ${up ? "text-accent" : "text-destructive"}`}
+                  >
                     <Icon className="size-3.5" />
                     {up ? "+" : ""}
                     {r.change.toFixed(2)}%

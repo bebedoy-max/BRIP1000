@@ -9,7 +9,7 @@ const FADE_MS = 2500;
 const DISPLAY_MS = 10_000;
 
 /** Kolom slide profil pekerja (di bawah infografis). */
-export function WorkerSlider() {
+export function WorkerSlider({ fill = false }: { fill?: boolean }) {
   const q = useQuery({
     queryKey: ["worker-slides"],
     queryFn: loadWorkerSlides,
@@ -22,22 +22,19 @@ export function WorkerSlider() {
   const lockRef = useRef(false);
 
   const displayedRef = useRef(0);
-  const advance = useCallback(
-    (next: number) => {
-      if (lockRef.current) return;
-      lockRef.current = true;
-      setFading(true);
+  const advance = useCallback((next: number) => {
+    if (lockRef.current) return;
+    lockRef.current = true;
+    setFading(true);
+    window.setTimeout(() => {
+      displayedRef.current = next;
+      setDisplayed(next);
+      setFading(false);
       window.setTimeout(() => {
-        displayedRef.current = next;
-        setDisplayed(next);
-        setFading(false);
-        window.setTimeout(() => {
-          lockRef.current = false;
-        }, FADE_MS);
+        lockRef.current = false;
       }, FADE_MS);
-    },
-    [],
-  );
+    }, FADE_MS);
+  }, []);
 
   const goNext = useCallback(() => {
     advance((displayedRef.current + 1) % slides.length);
@@ -57,8 +54,11 @@ export function WorkerSlider() {
   const s = slides[displayed % slides.length]!;
 
   return (
-    <section className="glass-card relative overflow-hidden p-3.5">
+    <section
+      className={`glass-card relative overflow-hidden p-3.5 ${fill ? "flex h-full flex-col" : ""}`}
+    >
       <div
+        className={fill ? "flex min-h-0 flex-1 flex-col" : undefined}
         style={{
           opacity: fading ? 0 : 1,
           transition: `opacity ${FADE_MS}ms ease-in-out`,
@@ -69,7 +69,9 @@ export function WorkerSlider() {
         </h2>
 
         <div
-          className="mt-3 overflow-hidden rounded-xl border border-border/60 bg-muted"
+          className={`mt-3 overflow-hidden rounded-xl border border-border/60 bg-muted ${
+            fill ? "relative min-h-56 flex-1" : ""
+          }`}
           style={
             s.glow
               ? ({
@@ -85,10 +87,18 @@ export function WorkerSlider() {
               src={s.photo}
               alt={`Foto ${s.nama}`}
               loading="lazy"
-              className="block aspect-[3/4] w-full object-cover object-top"
+              className={
+                fill
+                  ? "absolute inset-0 block size-full object-cover object-top"
+                  : "block aspect-[3/4] w-full object-cover object-top"
+              }
             />
           ) : (
-            <div className="grid aspect-[3/4] w-full place-items-center text-muted-foreground">
+            <div
+              className={`grid w-full place-items-center text-muted-foreground ${
+                fill ? "absolute inset-0" : "aspect-[3/4]"
+              }`}
+            >
               <UserRound className="size-10" />
             </div>
           )}

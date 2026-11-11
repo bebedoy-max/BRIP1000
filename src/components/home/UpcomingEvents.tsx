@@ -15,7 +15,7 @@ type Row = {
 };
 
 /** Kalender ringkas: agenda mendatang yang diatur dari menu admin. */
-export function UpcomingEvents() {
+export function UpcomingEvents({ embedded = false }: { embedded?: boolean }) {
   const q = useQuery({
     queryKey: ["upcoming-agenda"],
     staleTime: 120_000,
@@ -34,8 +34,8 @@ export function UpcomingEvents() {
   const rows = q.data ?? [];
 
   return (
-    <div className="glass-card flex h-full flex-col p-5">
-      <PanelLabel icon={CalendarClock} label="Upcoming Event" accent="events" />
+    <div className={embedded ? "flex h-full flex-col" : "glass-card flex h-full flex-col p-5"}>
+      {embedded ? null : <PanelLabel icon={CalendarClock} label="Upcoming Event" accent="events" />}
       {q.isLoading ? <p className="mt-3 text-sm text-muted-foreground">Memuat…</p> : null}
       {!q.isLoading && !rows.length ? (
         <p className="mt-3 text-sm text-muted-foreground">Belum ada agenda mendatang.</p>

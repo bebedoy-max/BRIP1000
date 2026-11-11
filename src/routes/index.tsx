@@ -10,6 +10,8 @@ import { AuthSplash } from "@/components/AuthSplash";
 import { InfographicStats } from "@/components/home/InfographicStats";
 import { WorkerSlider } from "@/components/home/WorkerSlider";
 import { HomeCarousel } from "@/components/home/HomeCarousel";
+import { DesktopHome } from "@/components/home/DesktopHome";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { MarketPanel } from "@/components/home/MarketPanel";
 import { BankRatesPanel } from "@/components/home/BankRatesPanel";
 import { NewsPanel } from "@/components/home/NewsPanel";
@@ -46,6 +48,7 @@ async function count(table: string, filter?: { col: string; val: unknown }) {
 }
 
 function Index() {
+  const desktop = useMediaQuery("(min-width: 1024px)");
   const navigate = useNavigate();
   const [redirecting, setRedirecting] = useState(false);
 
@@ -169,24 +172,28 @@ function Index() {
 
   return (
     <PublicLayout>
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_350px]">
-        <div className="xl:col-start-1 xl:row-start-1">
-          <HomeCarousel />
-        </div>
+      {desktop ? (
+        <DesktopHome infographics={infographics} />
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_350px]">
+          <div className="xl:col-start-1 xl:row-start-1">
+            <HomeCarousel />
+          </div>
 
-        <div className="grid content-start gap-4 lg:grid-cols-2 xl:col-start-1 xl:row-start-2">
-          <InfoBoard />
-          <NewsPanel />
-          <WorkerSlider />
-          <BankRatesPanel />
-        </div>
+          <div className="grid content-start gap-4 lg:grid-cols-2 xl:col-start-1 xl:row-start-2">
+            <InfoBoard />
+            <NewsPanel />
+            <WorkerSlider />
+            <BankRatesPanel />
+          </div>
 
-        <div className="grid content-start gap-4 md:grid-cols-2 xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:grid-cols-1">
-          <InfographicStats items={infographics} />
-          <MarketPanel />
-          <UpcomingEvents />
+          <div className="grid content-start gap-4 md:grid-cols-2 xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:grid-cols-1">
+            <InfographicStats items={infographics} />
+            <MarketPanel />
+            <UpcomingEvents />
+          </div>
         </div>
-      </div>
+      )}
 
       <section className="mt-10 border-t border-border/60 pt-8">
         <h2 className="event-title-glow mb-1 text-lg">The Event's BRI BO Pringsewu</h2>

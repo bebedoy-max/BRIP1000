@@ -22,7 +22,7 @@ const enterClass: Record<string, string> = {
 };
 
 /** Papan informasi digital BRI KC Pringsewu (teks / gambar / video). */
-export function InfoBoard() {
+export function InfoBoard({ embedded = false }: { embedded?: boolean }) {
   const q = useQuery({
     queryKey: ["info-board-slides"],
     queryFn: loadInfoSlides,
@@ -42,7 +42,8 @@ export function InfoBoard() {
   const prev = () => setIdx((i) => (slides.length ? (i - 1 + slides.length) % slides.length : 0));
 
   // Teks & gambar berganti sesuai durasi; video (file) berganti saat selesai.
-  const videoDriveId = current?.jenis === "video" && current.media_url ? infoDriveId(current.media_url) : null;
+  const videoDriveId =
+    current?.jenis === "video" && current.media_url ? infoDriveId(current.media_url) : null;
   const isFileVideo =
     current?.jenis === "video" &&
     !!current.media_url &&
@@ -57,17 +58,28 @@ export function InfoBoard() {
 
   if (q.isLoading)
     return (
-      <div className="glass-card p-5 text-sm text-muted-foreground">Memuat papan informasi…</div>
+      <div
+        className={
+          embedded
+            ? "text-sm text-muted-foreground"
+            : "glass-card p-5 text-sm text-muted-foreground"
+        }
+      >
+        Memuat papan informasi…
+      </div>
     );
-  if (!slides.length || !current) return null;
+  if (!slides.length || !current)
+    return embedded ? <p className="text-sm text-muted-foreground">Belum ada informasi.</p> : null;
 
   const anim = enterClass[current.transisi] ?? "animate-info-fade";
 
   return (
-    <section className="glass-card overflow-hidden p-5">
+    <section className={embedded ? "overflow-hidden" : "glass-card overflow-hidden p-5"}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <PanelLabel icon={MonitorPlay} label="Papan Informasi" accent="information" />
+          {embedded ? null : (
+            <PanelLabel icon={MonitorPlay} label="Papan Informasi" accent="information" />
+          )}
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -114,7 +126,9 @@ export function InfoBoard() {
             isEmbedVideo(current.media_url) || videoDriveId ? (
               <iframe
                 key={current.media_url}
-                src={videoDriveId ? driveVideoEmbed(videoDriveId) : embedVideoSrc(current.media_url)}
+                src={
+                  videoDriveId ? driveVideoEmbed(videoDriveId) : embedVideoSrc(current.media_url)
+                }
                 title={current.judul}
                 allow="autoplay; encrypted-media; picture-in-picture"
                 allowFullScreen
@@ -147,7 +161,6 @@ export function InfoBoard() {
           </div>
         </div>
       </div>
-
 
       <div className="mt-4 flex gap-1">
         {slides.map((s, i) => (

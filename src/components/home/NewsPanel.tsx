@@ -2,7 +2,12 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Newspaper } from "lucide-react";
 
-import { getNews, NEWS_CATEGORIES, type NewsCategory, type NewsItem } from "@/lib/home-feeds.functions";
+import {
+  getNews,
+  NEWS_CATEGORIES,
+  type NewsCategory,
+  type NewsItem,
+} from "@/lib/home-feeds.functions";
 import { Button } from "@/components/ui/button";
 import { NewsArticleDialog } from "./NewsArticleDialog";
 import { PanelLabel } from "./PanelLabel";
@@ -36,9 +41,13 @@ export function NewsPanel() {
   const items = q.data?.[activeCategory] ?? [];
 
   return (
-    <div className="glass-card flex h-fit flex-col p-5">
+    <div className="glass-card flex h-full flex-col p-5">
       <PanelLabel icon={Newspaper} label="Berita" accent="news" />
-      <div className="mt-3 grid grid-cols-3 gap-1 rounded-lg border border-border/60 bg-background/35 p-1 sm:grid-cols-5" role="tablist" aria-label="Kategori berita">
+      <div
+        className="mt-3 grid grid-cols-3 gap-1 rounded-lg border border-border/60 bg-background/35 p-1 sm:grid-cols-5"
+        role="tablist"
+        aria-label="Kategori berita"
+      >
         {NEWS_CATEGORIES.map((category) => (
           <Button
             key={category}
