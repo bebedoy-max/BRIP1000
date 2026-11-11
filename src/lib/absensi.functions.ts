@@ -133,8 +133,8 @@ export const saveAbsensiDisplayDefaults = createServerFn({ method: "POST" })
 
 /** Publik: saran nama pekerja untuk form absensi. */
 export const searchAbsensiEmployees = createServerFn({ method: "POST" })
-  .inputValidator((data: { term: string }) => data)
+  .inputValidator((data: { term: string; slug: string }) => data)
   .handler(async ({ data }) => {
     const { searchEmployeesByName } = await import("@/lib/absensi.server");
-    return searchEmployeesByName(data.term);
+    return searchEmployeesByName(String(data.term ?? ""), String(data.slug ?? ""));
   });

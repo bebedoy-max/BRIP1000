@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/url-guard.server";
 import type { ImageFocus, ImageFocusMap } from "@/lib/image-focus.functions";
 
 const CACHE_TABLE = "image_focus";
@@ -54,7 +55,7 @@ export async function writeFocusCache(key: string, focus: ImageFocus): Promise<v
 /** Ambil gambar lalu ubah jadi data URL base64 (model tidak bisa fetch Drive). */
 async function fetchAsDataUrl(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url, { headers: { "user-agent": "Mozilla/5.0" } });
+    const res = await safeFetch(url, { headers: { "user-agent": "Mozilla/5.0" } });
     if (!res.ok) return null;
     const type = res.headers.get("content-type") ?? "image/jpeg";
     if (!type.startsWith("image/")) return null;
@@ -129,9 +130,10 @@ export async function detectFaceFocus(url: string): Promise<ImageFocus | null> {
       console.error(`image-focus gateway ${res.status}: ${detail}`);
       if (!retryable || attempt === 2) return null;
       const retryAfter = Number(res.headers.get("retry-after"));
-      const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
-        ? retryAfter * 1000
-        : 1200 * 2 ** attempt + Math.random() * 400;
+      const waitMs =
+        Number.isFinite(retryAfter) && retryAfter > 0
+          ? retryAfter * 1000
+          : 1200 * 2 ** attempt + Math.random() * 400;
       await new Promise((r) => setTimeout(r, Math.min(8000, waitMs)));
     } catch (error) {
       console.error(error);
@@ -140,4 +142,3 @@ export async function detectFaceFocus(url: string): Promise<ImageFocus | null> {
   }
   return null;
 }
-

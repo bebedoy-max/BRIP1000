@@ -1,5 +1,12 @@
-import { blocksFromMarkdown, blocksFromPlainText, extractArticle, extractStructured, isUsableArticle } from "./article-extract";
+import {
+  blocksFromMarkdown,
+  blocksFromPlainText,
+  extractArticle,
+  extractStructured,
+  isUsableArticle,
+} from "./article-extract";
 import { resolveGoogleNewsUrl } from "./google-news.server";
+import { safeFetch } from "./url-guard.server";
 
 type ArticleContent = {
   title: string;
@@ -9,25 +16,29 @@ type ArticleContent = {
 
 type ReaderInput = { url: string; headline?: string | undefined; source?: string | undefined };
 
-const BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+const BROWSER_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 const GOOGLEBOT_UA = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)";
 
 async function fetchText(url: string, userAgent = BROWSER_UA, timeout = 12_000) {
-  const response = await fetch(url, {
+  const response = await safeFetch(url, {
     headers: {
       "user-agent": userAgent,
       accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
       "accept-language": "id-ID,id;q=0.9,en;q=0.8",
       referer: "https://news.google.com/",
     },
-    redirect: "follow",
     signal: AbortSignal.timeout(timeout),
   });
   if (!response.ok) return null;
   return response.text();
 }
 
-const normalize = (value: string) => value.toLocaleLowerCase("id-ID").replace(/[^a-z0-9]+/g, " ").trim();
+const normalize = (value: string) =>
+  value
+    .toLocaleLowerCase("id-ID")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 
 /** Situs Tribrata kerap memblokir server, tetapi artikelnya juga diterbitkan
  * pada kanal resmi Polres Blitar Kota. Ambil salinan yang judulnya sama. */
@@ -50,9 +61,14 @@ async function readOfficialMirror(sourceUrl: string, headline: string) {
 
   const postRaw = await fetchText(`https://proklamatornews.com/wp-json/wp/v2/posts/${match.id}`);
   if (!postRaw) return null;
-  const post = JSON.parse(postRaw) as { title?: { rendered?: string }; content?: { rendered?: string } };
+  const post = JSON.parse(postRaw) as {
+    title?: { rendered?: string };
+    content?: { rendered?: string };
+  };
   const html = post.content?.rendered ?? "";
-  const parsed = extractArticle(`<article><h1>${post.title?.rendered ?? headline}</h1>${html}</article>`);
+  const parsed = extractArticle(
+    `<article><h1>${post.title?.rendered ?? headline}</h1>${html}</article>`,
+  );
   return isUsableArticle(parsed.blocks, parsed.title) ? parsed : null;
 }
 
@@ -156,9 +172,7 @@ export async function readArticle(data: ReaderInput): Promise<ArticleContent> {
       const parsed = extractArticle(html);
       title = cleanTitle(parsed.title) || title;
       if (isUsableArticle(parsed.blocks, parsed.title)) {
-        const blocks = attempt.merge
-          ? await mergePages(attempt.url, parsed.blocks)
-          : parsed.blocks;
+        const blocks = attempt.merge ? await mergePages(attempt.url, parsed.blocks) : parsed.blocks;
         return { title, blocks, sourceUrl: attempt.url };
       }
 
@@ -217,12 +231,18 @@ export async function readArticle(data: ReaderInput): Promise<ArticleContent> {
 
   try {
     const mirrored = await readOfficialMirror(sourceUrl, data.headline ?? title);
-    if (mirrored) return { title: mirrored.title || data.headline || title, blocks: mirrored.blocks, sourceUrl };
+    if (mirrored)
+      return {
+        title: mirrored.title || data.headline || title,
+        blocks: mirrored.blocks,
+        sourceUrl,
+      };
   } catch {
     // Tidak ada salinan resmi yang cocok.
   }
 
-  if (structuredBlocks.length) return { title: title || data.headline || "", blocks: structuredBlocks, sourceUrl };
+  if (structuredBlocks.length)
+    return { title: title || data.headline || "", blocks: structuredBlocks, sourceUrl };
 
   return { title: data.headline || title, blocks: [], sourceUrl };
 }

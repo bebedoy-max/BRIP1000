@@ -1,16 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import {
-  compressImage,
-  formatDateID,
-  themeVars,
-  type AbsensiSettings,
-} from "@/lib/absensi-ui";
-import {
-  getAbsensiEvent,
-  searchAbsensiEmployees,
-  submitAbsensi,
-} from "@/lib/absensi.functions";
+import { compressImage, formatDateID, themeVars, type AbsensiSettings } from "@/lib/absensi-ui";
+import { getAbsensiEvent, searchAbsensiEmployees, submitAbsensi } from "@/lib/absensi.functions";
 
 export const Route = createFileRoute("/absensi/$slug")({
   head: () => ({
@@ -54,7 +45,7 @@ function AbsensiPage() {
   const [cameraOn, setCameraOn] = useState(false);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
   const [suggestions, setSuggestions] = useState<
-    { nama: string; personalNumber: string; unitKerja: string }[]
+    { nama: string; pnHint: string; unitKerja: string }[]
   >([]);
   const [showSuggest, setShowSuggest] = useState(false);
   const namaPickedRef = useRef(false);
@@ -71,7 +62,7 @@ function AbsensiPage() {
     }
     let alive = true;
     const t = setTimeout(() => {
-      searchAbsensiEmployees({ data: { term } })
+      searchAbsensiEmployees({ data: { term, slug } })
         .then((rows) => {
           if (!alive) return;
           setSuggestions(rows as typeof suggestions);
@@ -205,7 +196,8 @@ function AbsensiPage() {
       else if (!/^\d{9,15}$/.test(form.noTelp))
         errs.noTelp = "Nomor telepon hanya angka (9-15 digit).";
     }
-    if (fields.fotoSelfie && !form.fotoSelfie) errs.fotoSelfie = "Ambil foto selfie terlebih dahulu.";
+    if (fields.fotoSelfie && !form.fotoSelfie)
+      errs.fotoSelfie = "Ambil foto selfie terlebih dahulu.";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -290,7 +282,11 @@ function AbsensiPage() {
         {settings.logoLeft && (
           <img
             className="corner-logo corner-logo-left"
-            style={{ width: settings.logoLeftSize || 136, height: settings.logoLeftSize || 136, top: settings.logoLeftTop ?? 14 }}
+            style={{
+              width: settings.logoLeftSize || 136,
+              height: settings.logoLeftSize || 136,
+              top: settings.logoLeftTop ?? 14,
+            }}
             src={settings.logoLeft}
             alt="Logo kiri"
           />
@@ -298,7 +294,11 @@ function AbsensiPage() {
         {settings.logoRight && (
           <img
             className="corner-logo corner-logo-right"
-            style={{ width: settings.logoRightSize || 136, height: settings.logoRightSize || 136, top: settings.logoRightTop ?? 14 }}
+            style={{
+              width: settings.logoRightSize || 136,
+              height: settings.logoRightSize || 136,
+              top: settings.logoRightTop ?? 14,
+            }}
             src={settings.logoRight}
             alt="Logo kanan"
           />
@@ -370,7 +370,7 @@ function AbsensiPage() {
                         }}
                       >
                         {suggestions.map((s, i) => (
-                          <li key={`${s.personalNumber}-${i}`}>
+                          <li key={`${s.nama}-${i}`}>
                             <button
                               type="button"
                               onMouseDown={(e) => e.preventDefault()}
@@ -379,9 +379,9 @@ function AbsensiPage() {
                                 setForm((f) => ({
                                   ...f,
                                   nama: s.nama.toUpperCase(),
-                                  personalNumber: s.personalNumber || f.personalNumber,
                                   unitKerja:
-                                    s.unitKerja && (settings?.unitKerjaList ?? []).includes(s.unitKerja)
+                                    s.unitKerja &&
+                                    (settings?.unitKerjaList ?? []).includes(s.unitKerja)
                                       ? s.unitKerja
                                       : f.unitKerja,
                                 }));
@@ -403,8 +403,10 @@ function AbsensiPage() {
                               }}
                             >
                               <span style={{ fontWeight: 600 }}>{s.nama}</span>
-                              <span style={{ display: "block", fontSize: 12, color: "var(--text-dim)" }}>
-                                {[s.personalNumber, s.unitKerja].filter(Boolean).join(" · ")}
+                              <span
+                                style={{ display: "block", fontSize: 12, color: "var(--text-dim)" }}
+                              >
+                                {[s.pnHint, s.unitKerja].filter(Boolean).join(" · ")}
                               </span>
                             </button>
                           </li>

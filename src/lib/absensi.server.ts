@@ -77,7 +77,8 @@ export async function listEventsFor(userId: string) {
   }
   let q = db.from("absensi_events").select("*").order("created_at", { ascending: false });
   if (ids) {
-    if (!ids.length) return { panel, events: [] as AbsensiSettings[], counts: {} as Record<string, number> };
+    if (!ids.length)
+      return { panel, events: [] as AbsensiSettings[], counts: {} as Record<string, number> };
     q = q.in("id", ids);
   }
   const { data, error } = await q;
@@ -205,7 +206,6 @@ export async function saveEvent(payload: SavePayload, userId: string) {
   return String(data?.id);
 }
 
-
 export async function deleteEvent(id: string) {
   const db = await admin();
   const entries = await listEntries(id);
@@ -256,7 +256,11 @@ export async function deleteEntry(eventId: string, entryId: string) {
     .eq("event_id", eventId)
     .maybeSingle();
   await removeDriveFiles([data?.photo_file_id].filter(Boolean) as string[]);
-  const { error } = await db.from("absensi_entries").delete().eq("id", entryId).eq("event_id", eventId);
+  const { error } = await db
+    .from("absensi_entries")
+    .delete()
+    .eq("id", entryId)
+    .eq("event_id", eventId);
   if (error) throw new Error(error.message);
 }
 
@@ -293,9 +297,8 @@ export type NewEntry = {
 async function storePhoto(dataUrl: string, personName: string, eventName: string) {
   const match = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(dataUrl);
   if (!match) throw new Error("Format foto tidak dikenali.");
-  const { getActiveAccount, accessToken, ensureEntityFolder, uploadToDrive } = await import(
-    "@/lib/drive.server"
-  );
+  const { getActiveAccount, accessToken, ensureEntityFolder, uploadToDrive } =
+    await import("@/lib/drive.server");
   const acc = await getActiveAccount();
   const token = await accessToken(acc);
   const folderId = await ensureEntityFolder(acc, token, "absensi", eventName || "Absensi");
@@ -361,7 +364,10 @@ export async function listEventAdmins(eventId: string): Promise<EventAdminView[]
 export async function addEventAdmin(eventId: string, email: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const clean = email.trim().toLowerCase();
-  const { data: list } = await (supabaseAdmin as any).auth.admin.listUsers({ page: 1, perPage: 1000 });
+  const { data: list } = await (supabaseAdmin as any).auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
+  });
   const user = (list?.users ?? []).find(
     (u: { email?: string }) => (u.email ?? "").toLowerCase() === clean,
   );
@@ -378,15 +384,28 @@ export async function addEventAdmin(eventId: string, email: string) {
 
 export async function removeEventAdmin(eventId: string, id: string) {
   const db = await admin();
-  const { error } = await db.from("absensi_event_admins").delete().eq("id", id).eq("event_id", eventId);
+  const { error } = await db
+    .from("absensi_event_admins")
+    .delete()
+    .eq("id", id)
+    .eq("event_id", eventId);
   if (error) throw new Error(error.message);
 }
 
 /** Cari pekerja untuk saran nama pada form absensi publik (maks 5). */
-export async function searchEmployeesByName(term: string) {
-  const q = term.trim();
-  if (q.length < 2) return [];
+/**
+ * Saran nama untuk form absensi publik. Hanya untuk event absensi yang valid dan TIDAK
+ * mengembalikan Personal Number (dipakai sebagai kredensial vote/registrasi): hanya
+ * petunjuk 3 digit terakhir untuk membedakan nama yang sama.
+ */
+export async function searchEmployeesByName(term: string, slug: string) {
+  const q = term
+    .trim()
+    .replace(/[%,()*\\]/g, " ")
+    .trim();
+  if (q.length < 2 || !slug) return [];
   try {
+    if (!(await getEventBySlug(slug))) return [];
     const db = await admin();
     const { data } = await db
       .from("employees")
@@ -394,11 +413,14 @@ export async function searchEmployeesByName(term: string) {
       .ilike("nama", `%${q}%`)
       .order("nama", { ascending: true })
       .limit(5);
-    return (data ?? []).map((r: Record<string, any>) => ({
-      nama: String(r["nama"] ?? ""),
-      personalNumber: r["personal_number"] ? String(r["personal_number"]) : "",
-      unitKerja: String(r["uker"]?.["nama_uker"] ?? ""),
-    }));
+    return (data ?? []).map((r: Record<string, any>) => {
+      const pn = r["personal_number"] ? String(r["personal_number"]) : "";
+      return {
+        nama: String(r["nama"] ?? ""),
+        pnHint: pn ? `••••••${pn.slice(-2)}` : "",
+        unitKerja: String(r["uker"]?.["nama_uker"] ?? ""),
+      };
+    });
   } catch {
     return [];
   }

@@ -40,7 +40,7 @@ export const Route = createFileRoute("/api/public/companion/finalize")({
           const drive = await import("@/lib/drive.server");
           const acc = await drive.getActiveAccount();
           const token = await drive.accessToken(acc);
-          await fetch(`https://www.googleapis.com/drive/v3/files/${payload.fileId}/permissions`, {
+          await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(payload.fileId)}/permissions`, {
             method: "POST",
             headers: { Authorization: `Bearer ${token}`, "content-type": "application/json" },
             body: JSON.stringify({ role: "reader", type: "anyone" }),

@@ -19,7 +19,7 @@ export const Route = createFileRoute("/api/info-media/upload")({
         }
 
         const uploadUrl = request.headers.get("x-upload-url");
-        if (!uploadUrl || !/^https:\/\/[\w.-]*googleapis\.com\//.test(uploadUrl)) {
+        if (!uploadUrl || !/^https:\/\/([\w-]+\.)*googleapis\.com\//.test(uploadUrl)) {
           return new Response("URL unggah tidak valid", { status: 400 });
         }
 
