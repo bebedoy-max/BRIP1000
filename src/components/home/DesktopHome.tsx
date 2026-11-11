@@ -19,7 +19,7 @@ export function DesktopHome({ infographics }: { infographics: InfographicStat[] 
   return (
     <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_350px]">
       <div className="flex min-w-0 flex-col gap-4">
-        <div className="min-h-0 flex-1 [&>*]:h-full">
+        <div className="flex min-h-0 flex-1 flex-col [&>*]:flex-1">
           <HomeCarousel />
         </div>
         <div className="grid items-stretch gap-4 lg:grid-cols-2">
@@ -63,7 +63,7 @@ export function DesktopHome({ infographics }: { infographics: InfographicStat[] 
             },
           ]}
         />
-        <div className="min-h-0 xl:flex-1 [&>*]:h-full">
+        <div className="flex min-h-0 flex-col xl:flex-1 [&>*]:flex-1">
           <WorkerSlider fill />
         </div>
       </div>

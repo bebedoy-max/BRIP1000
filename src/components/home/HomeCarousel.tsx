@@ -305,7 +305,7 @@ export function HomeCarousel() {
     "grid size-[52px] place-items-center rounded-full border-[1.5px] border-white/40 text-white transition-colors hover:border-white hover:bg-white/10";
 
   return (
-    <div className="glass-card w-full overflow-hidden lg:flex lg:h-full lg:flex-col">
+    <div className="glass-card w-full overflow-hidden lg:flex lg:flex-col">
       {/* Area foto. Mobile & tablet: foto 4:3 tanpa teks di atasnya.
           Desktop (lg+): panel navy di kiri berisi teks, foto memudar dari kanan. */}
       <div className="relative aspect-[4/3] w-full overflow-hidden lg:aspect-auto lg:min-h-[420px] lg:flex-1 lg:bg-[#071a36]">

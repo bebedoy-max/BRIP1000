@@ -54,9 +54,7 @@ export function WorkerSlider({ fill = false }: { fill?: boolean }) {
   const s = slides[displayed % slides.length]!;
 
   return (
-    <section
-      className={`glass-card relative overflow-hidden p-3.5 ${fill ? "flex h-full flex-col" : ""}`}
-    >
+    <section className={`glass-card relative overflow-hidden p-3.5 ${fill ? "flex flex-col" : ""}`}>
       <div
         className={fill ? "flex min-h-0 flex-1 flex-col" : undefined}
         style={{
