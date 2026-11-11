@@ -301,39 +301,43 @@ export function HomeCarousel() {
 
   const navButton =
     "grid size-9 place-items-center rounded-full border border-border/70 bg-background/70 shadow-lg backdrop-blur transition-colors hover:border-primary/60";
+  const deskNav =
+    "grid size-[52px] place-items-center rounded-full border-[1.5px] border-white/40 text-white transition-colors hover:border-white hover:bg-white/10";
 
   return (
     <div className="glass-card w-full overflow-hidden">
-      {/* Area foto: di mobile tanpa teks di atas foto agar wajah tidak tertutup */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden sm:aspect-video">
-        {slides.map((s, i) => {
-          const photo = photoOf(s);
-          return (
-            <div
-              key={s.id}
-              className="absolute inset-0 transition-opacity duration-700"
-              style={{ opacity: i === idx ? 1 : 0, pointerEvents: i === idx ? "auto" : "none" }}
-            >
-              {photo && mounted.has(i) ? (
-                <SlideImage
-                  photo={photo}
-                  focus={focusMap[photo]}
-                  alt={s.title}
-                  className="absolute inset-0 size-full object-cover"
-                />
-              ) : !photo ? (
-                <div
-                  className="absolute inset-0"
-                  style={{ backgroundImage: "var(--gradient-stat)", opacity: 0.35 }}
-                />
-              ) : null}
-              <div className="absolute inset-0 hidden bg-gradient-to-t from-background/85 via-background/35 via-[25%] to-transparent to-[42%] sm:block" />
-              <div className="absolute inset-0 hidden bg-gradient-to-r from-background/40 via-transparent to-transparent sm:block" />
-              {/* Mobile: bayangan tipis hanya di tepi bawah foto untuk lencana */}
-              <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/35 to-transparent sm:hidden" />
-            </div>
-          );
-        })}
+      {/* Area foto. Mobile & tablet: foto 4:3 tanpa teks di atasnya.
+          Desktop (lg+): panel navy di kiri berisi teks, foto memudar dari kanan. */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden lg:aspect-video lg:bg-[#071a36]">
+        <div className="absolute inset-0 lg:left-[26%] lg:[-webkit-mask-image:linear-gradient(90deg,transparent_0,#000_38%)] lg:[mask-image:linear-gradient(90deg,transparent_0,#000_38%)]">
+          {slides.map((s, i) => {
+            const photo = photoOf(s);
+            return (
+              <div
+                key={s.id}
+                className="absolute inset-0 transition-opacity duration-700"
+                style={{ opacity: i === idx ? 1 : 0, pointerEvents: i === idx ? "auto" : "none" }}
+              >
+                {photo && mounted.has(i) ? (
+                  <SlideImage
+                    photo={photo}
+                    focus={focusMap[photo]}
+                    alt={s.title}
+                    className="absolute inset-0 size-full object-cover"
+                  />
+                ) : !photo ? (
+                  <div
+                    className="absolute inset-0"
+                    style={{ backgroundImage: "var(--gradient-stat)", opacity: 0.35 }}
+                  />
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+        <div className="pointer-events-none absolute inset-0 hidden bg-[radial-gradient(ellipse_at_0%_100%,rgba(14,58,122,0.53),transparent_55%)] lg:block" />
+        {/* Mobile: bayangan tipis di tepi atas foto untuk lencana */}
+        <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/35 to-transparent lg:hidden" />
 
         {!slides.length ? (
           <div className="grid size-full place-items-center text-muted-foreground">
@@ -351,9 +355,9 @@ export function HomeCarousel() {
           />
         ) : null}
 
-        {/* Mobile: lencana jenis + penghitung di sudut foto */}
+        {/* Mobile & tablet: lencana jenis + penghitung di sudut foto */}
         {active ? (
-          <div className="pointer-events-none absolute inset-x-3 top-3 z-20 flex items-center justify-between sm:hidden">
+          <div className="pointer-events-none absolute inset-x-3 top-3 z-20 flex items-center justify-between lg:hidden">
             <span className="rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-bold tracking-[0.14em] text-white uppercase backdrop-blur">
               {active.kind}
             </span>
@@ -365,73 +369,66 @@ export function HomeCarousel() {
           </div>
         ) : null}
 
-        {/* Desktop/tablet: teks di atas foto seperti semula */}
-        <div className="pointer-events-none absolute inset-0 z-20 hidden flex-col justify-end p-8 sm:flex">
-          {active ? (
-            <>
-              <span
-                className="w-fit rounded-full border border-primary/40 bg-background/70 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-accent uppercase shadow-lg backdrop-blur"
-                style={{ textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}
-              >
+        {/* Desktop: teks di panel kiri (tidak menutupi foto) */}
+        {active ? (
+          <div className="pointer-events-none absolute top-[8%] bottom-[9%] left-[5%] z-20 hidden w-[38%] max-w-[500px] flex-col lg:flex">
+            <div className="flex items-center gap-3.5">
+              <span className="h-[3px] w-[34px] rounded-full bg-[#59b3ff]" />
+              <span className="text-[13px] font-bold tracking-[0.2em] text-[#59b3ff] uppercase">
                 {active.kind}
               </span>
-              <h2
-                className="mt-3 max-w-2xl text-4xl leading-tight font-bold text-foreground"
-                style={{
-                  textShadow: "0 2px 4px rgba(0,0,0,0.7), 0 4px 14px rgba(0,0,0,0.5)",
-                  WebkitTextStroke: "0.5px rgba(0,0,0,0.35)",
-                }}
-              >
-                {active.title}
-              </h2>
-              <p
-                className="mt-2 line-clamp-2 max-w-xl text-sm font-medium text-foreground/90"
-                style={{ textShadow: "0 1px 3px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.5)" }}
-              >
-                {active.subtitle}
-              </p>
+            </div>
+            <h2 className="mt-auto text-4xl leading-[1.08] font-extrabold tracking-tight text-white xl:text-5xl">
+              {active.title}
+            </h2>
+            <p className="mt-4 line-clamp-2 text-base font-medium text-[#b9cbe6]">
+              {active.subtitle}
+            </p>
+            <div className="pointer-events-auto mt-7 flex items-center gap-3.5">
               {active.to ? (
                 <Link
                   to={active.to.to}
                   params={active.to.params}
                   search={{ from: "/" }}
-                  className="pointer-events-auto mt-4 w-fit rounded-xl border border-border/70 bg-background/70 px-4 py-2 text-sm font-medium shadow-lg backdrop-blur transition-colors hover:border-primary/60 hover:text-foreground"
+                  className="flex h-[52px] items-center rounded-full bg-[#59b3ff] px-7 text-[15px] font-bold text-[#04162e] transition-colors hover:bg-[#7cc4ff]"
                 >
                   Lihat detail
                 </Link>
               ) : null}
-            </>
-          ) : null}
-
-          {slides.length > 1 ? (
-            <div className="pointer-events-auto mt-5 flex items-center gap-2">
-              <button type="button" aria-label="Sebelumnya" onClick={prev} className={navButton}>
-                <ChevronLeft className="size-4" />
-              </button>
-              <button type="button" aria-label="Berikutnya" onClick={next} className={navButton}>
-                <ChevronRight className="size-4" />
-              </button>
-              <div className="ml-2 flex flex-wrap gap-1.5">
-                {slides.map((s, i) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    aria-label={`Slide ${i + 1}`}
-                    onClick={() => setIdx(i)}
-                    className={`h-1.5 rounded-full transition-all ${
-                      i === idx ? "w-6 bg-primary" : "w-2 bg-border"
-                    }`}
-                  />
-                ))}
-              </div>
+              {slides.length > 1 ? (
+                <>
+                  <button type="button" aria-label="Sebelumnya" onClick={prev} className={deskNav}>
+                    <ChevronLeft className="size-5" />
+                  </button>
+                  <button type="button" aria-label="Berikutnya" onClick={next} className={deskNav}>
+                    <ChevronRight className="size-5" />
+                  </button>
+                </>
+              ) : null}
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
+
+        {/* Desktop: penghitung + garis progres */}
+        {active && slides.length > 1 ? (
+          <div className="pointer-events-none absolute right-9 bottom-8 z-20 hidden items-center gap-4 lg:flex">
+            <span className="text-[15px] font-bold text-white tabular-nums">
+              {String(idx + 1).padStart(2, "0")}
+              <span className="text-white/55"> / {String(slides.length).padStart(2, "0")}</span>
+            </span>
+            <span className="h-[3px] w-40 overflow-hidden rounded-full bg-white/30">
+              <span
+                className="block h-full rounded-full bg-[#59b3ff] transition-all duration-500"
+                style={{ width: `${((idx + 1) / slides.length) * 100}%` }}
+              />
+            </span>
+          </div>
+        ) : null}
       </div>
 
-      {/* Mobile: judul & kontrol di bawah foto */}
+      {/* Mobile & tablet: judul & kontrol di bawah foto */}
       {active ? (
-        <div className="space-y-3 p-4 sm:hidden">
+        <div className="space-y-3 p-4 lg:hidden">
           <div className="min-w-0">
             <h2 className="line-clamp-2 text-[17px] leading-snug font-bold">{active.title}</h2>
             <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{active.subtitle}</p>
