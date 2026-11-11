@@ -1176,6 +1176,7 @@
   inset: 0;
   z-index: 40;
   overflow-y: auto;
+  overflow-anchor: none;
   overscroll-behavior-y: none;
   /* Tanpa scroll-snap & background-attachment fixed: keduanya memicu
      layar berkedip saat scroll halus otomatis di mode fullscreen. */
@@ -1209,8 +1210,11 @@
 
 .doa-screen {
   display: flex;
-  height: 100vh;
-  min-height: 100vh;
+  /* Sama persis dengan tinggi area tampil .doa-root (fixed inset-0); 100vh bisa lebih tinggi
+     daripada area tampil (bilah browser/fullscreen) sehingga header turun beberapa piksel. */
+  height: 100%;
+  min-height: 100%;
+  flex: none;
   overflow: hidden;
   flex-direction: column;
   background: transparent;

@@ -159,12 +159,14 @@ function scrollToAttendanceScreen(input: HTMLInputElement) {
   const screen = input.closest<HTMLElement>(".doa-screen");
   if (!root || !screen) return;
 
-  const rootRect = root.getBoundingClientRect();
-  const screenRect = screen.getBoundingClientRect();
-  root.scrollTo({
-    top: root.scrollTop + screenRect.top - rootRect.top,
-    behavior: "smooth",
-  });
+  // offsetTop terhadap root bersifat tetap (tidak bergantung posisi gulir saat ini),
+  // sehingga bagian selalu berhenti tepat di atas dan header tidak turun beberapa piksel.
+  const target = screen.offsetTop;
+  root.scrollTo({ top: target, behavior: "smooth" });
+  // Koreksi bila gulir halus terpotong (mis. oleh fokus/animasi): kunci persis di atas.
+  window.setTimeout(() => {
+    if (Math.abs(root.scrollTop - target) > 1) root.scrollTo({ top: target, behavior: "instant" });
+  }, 1000);
 }
 
 function SectionScreen({
