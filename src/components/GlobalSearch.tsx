@@ -5,12 +5,7 @@ import { ExternalLink, Filter, Loader2, Search, X } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { useRoles } from "@/lib/roles";
-import {
-  guessTitle,
-  searchModules,
-  
-  type SearchModule,
-} from "@/lib/search-registry";
+import { guessTitle, searchModules, type SearchModule } from "@/lib/search-registry";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { EmployeeProfileLink } from "@/components/EmployeeProfileLink";
@@ -22,13 +17,13 @@ const db = supabase as unknown as SupabaseClient;
 
 type Row = Record<string, unknown>;
 
-type Hit = {
+export type Hit = {
   id: string;
   title: string;
   subtitle: string;
 };
 
-type Group = {
+export type Group = {
   module: SearchModule;
   hits: Hit[];
   total: number;
@@ -138,14 +133,13 @@ async function searchModule(m: SearchModule, terms: string[]): Promise<Group> {
   };
 }
 
-
 /**
  * Satu baris hasil pencarian. Bila tabelnya punya label entitas yang bisa
  * diklik (pekerja, unit kerja, mesin ATM/CRM), pop up khusus entitas itu yang
  * dipakai; tabel lain memakai pop up detail generik yang isinya mengikuti
  * kolom data sehingga otomatis menyesuaikan data/menu baru.
  */
-function HitRow({
+export function HitRow({
   group,
   hit,
   onOpenMenu,
@@ -212,12 +206,9 @@ function HitRow({
   );
 }
 
-export function GlobalSearch({ className = "" }: { className?: string }) {
-  const navigate = useNavigate();
+/** Pencarian global terdebounce: dipakai kolom cari desktop dan panel cari mobile. */
+export function useGlobalSearch(q: string) {
   const { isItAdmin, isEventAdmin, isSuperadmin } = useRoles();
-  const [q, setQ] = useState("");
-  const [open, setOpen] = useState(false);
-  const boxRef = useRef<HTMLDivElement>(null);
   const term = useDebounced(q.trim());
 
   const allowed = useMemo(
@@ -247,9 +238,17 @@ export function GlobalSearch({ className = "" }: { className?: string }) {
     },
   });
 
-
   const groups = results.data ?? [];
   const totalHits = groups.reduce((n, g) => n + g.total, 0);
+  return { term, groups, totalHits, isFetching: results.isFetching };
+}
+
+export function GlobalSearch({ className = "" }: { className?: string }) {
+  const navigate = useNavigate();
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const { term, groups, totalHits, isFetching } = useGlobalSearch(q);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -309,7 +308,7 @@ export function GlobalSearch({ className = "" }: { className?: string }) {
 
       {open && term.length >= 2 ? (
         <div className="glass-card absolute right-0 z-50 mt-2 max-h-[28rem] w-full min-w-[22rem] overflow-y-auto p-2">
-          {results.isFetching ? (
+          {isFetching ? (
             <p className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" /> Mencari…
             </p>

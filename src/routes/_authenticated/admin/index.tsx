@@ -129,12 +129,17 @@ function Page() {
   return (
     <AdminLayout>
       <MobileHome
-        hero={{ label: "Total Pekerja", value: stats.data?.employees ?? "—", detailKey: "pegawai" }}
+        hero={{
+          label: "Total pekerja aktif",
+          value: stats.data?.employees ?? "—",
+          detailKey: "pegawai",
+        }}
+        subtitle={`${stats.data?.ukers ?? "—"} unit kerja · ${stats.data?.projects ?? "—"} project berjalan`}
         stats={[
-          { label: "ATM / CRM", value: stats.data?.atm ?? "—", detailKey: "atm" },
-          { label: "Mesin EDC", value: stats.data?.edc ?? "—", detailKey: "edc" },
-          { label: "Merchant QRIS", value: stats.data?.qris ?? "—", detailKey: "qris" },
-          { label: "Project IT", value: stats.data?.projects ?? "—", detailKey: "project" },
+          { label: "ATM/CRM", value: stats.data?.atm ?? "—", detailKey: "atm" },
+          { label: "EDC", value: stats.data?.edc ?? "—", detailKey: "edc" },
+          { label: "QRIS", value: stats.data?.qris ?? "—", detailKey: "qris" },
+          { label: "Event", value: stats.data?.events ?? "—", detailKey: "event" },
         ]}
       />
       <div className="mt-4 lg:mt-0">

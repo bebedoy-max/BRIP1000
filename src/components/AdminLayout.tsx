@@ -1,7 +1,7 @@
 import { createContext, useState, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, LogOut, X } from "lucide-react";
+import { ChevronDown, LogOut } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { menuTree, useAccess } from "@/lib/access";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import logoUrl from "@/assets/logo.png";
 import { AuthSplash } from "@/components/AuthSplash";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { MobileNav } from "@/components/MobileNav";
+import { MobileMenuSheet } from "@/components/MobileMenuSheet";
+import { MobileSearchSheet } from "@/components/MobileSearchSheet";
 import { usePresenceHeartbeat, useSelfBlocked } from "@/lib/users";
 
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -85,6 +87,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
   const [signingOut, setSigningOut] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   usePresenceHeartbeat();
 
   async function signOut() {
@@ -129,43 +132,28 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         {sidebarBody}
       </aside>
 
-      {/* Sidebar auto-hide untuk tampilan mobile */}
-      <div className={`fixed inset-0 z-50 lg:hidden ${menuOpen ? "" : "pointer-events-none"}`}>
-        <div
-          className={`absolute inset-0 bg-background/70 backdrop-blur-sm transition-opacity duration-200 ${
-            menuOpen ? "opacity-100" : "opacity-0"
-          }`}
-          onClick={() => setMenuOpen(false)}
-        />
-        <aside
-          className={`absolute left-0 top-0 flex h-full w-72 max-w-[85vw] flex-col gap-1 overflow-y-auto border-r border-border/60 bg-background p-4 shadow-xl transition-transform duration-200 ${
-            menuOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          <div className="flex justify-end">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Tutup menu"
-              onClick={() => setMenuOpen(false)}
-            >
-              <X className="size-5" />
-            </Button>
-          </div>
-          {sidebarBody}
-        </aside>
-      </div>
-
       <div className="min-w-0 flex-1">
-        <header className="sticky top-0 z-40 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-b border-border/60 bg-background/60 p-3 backdrop-blur-xl lg:flex lg:justify-end">
+        <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-border/60 bg-background/60 p-3 backdrop-blur-xl lg:justify-end">
           <Link to="/admin" aria-label="Beranda" className="shrink-0 lg:hidden">
             <img src={logoUrl} alt="BRI BO Pringsewu" className="h-9 w-auto object-contain" />
           </Link>
-          <GlobalSearch className="w-full max-w-md" />
+          <Badge variant="secondary" className="text-[10px] lg:hidden">
+            {levelLabel}
+          </Badge>
+          <GlobalSearch className="hidden w-full max-w-md lg:block" />
         </header>
         <main className="p-4 pb-28 sm:p-6 lg:pb-6">{children}</main>
       </div>
-      <MobileNav onOpenMenu={() => setMenuOpen(true)} />
+      <MobileNav onOpenMenu={() => setMenuOpen(true)} onOpenSearch={() => setSearchOpen(true)} />
+      <MobileMenuSheet
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onSignOut={() => {
+          setMenuOpen(false);
+          void signOut();
+        }}
+      />
+      <MobileSearchSheet open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }

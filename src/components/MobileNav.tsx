@@ -1,79 +1,44 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { CalendarDays, Database, Home, LayoutGrid, type LucideIcon } from "lucide-react";
-import { useAccess } from "@/lib/access";
+import { Home, Menu, Search } from "lucide-react";
 
-type Tab = {
-  key: string;
-  to: string;
-  label: string;
-  icon: LucideIcon;
-  /** Awalan path yang menandai tab ini aktif. */
-  match: string[];
-};
+const side =
+  "grid size-12 place-items-center rounded-full text-slate-300 transition-colors hover:text-white";
 
-const tabs: Tab[] = [
-  { key: "ringkasan", to: "/admin", label: "Beranda", icon: Home, match: [] },
-  {
-    key: "pegawai",
-    to: "/admin/pegawai",
-    label: "Database",
-    icon: Database,
-    match: [
-      "/admin/uker",
-      "/admin/pegawai",
-      "/admin/atm",
-      "/admin/crm",
-      "/admin/edc",
-      "/admin/qris",
-      "/admin/perangkat",
-    ],
-  },
-  {
-    key: "project",
-    to: "/admin/project",
-    label: "Project",
-    icon: CalendarDays,
-    match: ["/admin/project", "/admin/foto", "/admin/agenda"],
-  },
-];
-
-const tabClass =
-  "flex min-w-14 flex-col items-center gap-0.5 rounded-2xl px-3 py-1.5 text-[10.5px] font-semibold text-muted-foreground transition-colors";
-
-/** Navigasi bawah mengambang untuk mobile: tab utama + tombol Menu (buka semua menu). */
-export function MobileNav({ onOpenMenu }: { onOpenMenu: () => void }) {
-  const { visibleMenus } = useAccess();
+/** Dock bawah mobile: Beranda, tombol Cari besar di tengah (membuka panel cari), dan Menu. */
+export function MobileNav({
+  onOpenMenu,
+  onOpenSearch,
+}: {
+  onOpenMenu: () => void;
+  onOpenSearch: () => void;
+}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const allowed = new Set(visibleMenus.map((m) => m.key));
+  const homeActive = pathname === "/admin" || pathname === "/admin/";
 
   return (
     <nav
       aria-label="Menu utama"
-      className="glass-card fixed inset-x-3 bottom-3 z-40 flex items-center justify-around rounded-3xl p-1.5 shadow-lg backdrop-blur-xl lg:hidden"
-      style={{ paddingBottom: "max(0.375rem, env(safe-area-inset-bottom))" }}
+      className="fixed inset-x-8 bottom-4 z-40 flex h-16 items-center justify-between rounded-full bg-slate-900/95 px-2 shadow-2xl shadow-black/40 backdrop-blur-xl lg:hidden"
+      style={{ marginBottom: "env(safe-area-inset-bottom)" }}
     >
-      {tabs
-        .filter((t) => allowed.has(t.key))
-        .map((t) => {
-          const active =
-            t.to === "/admin"
-              ? pathname === "/admin" || pathname === "/admin/"
-              : t.match.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-          return (
-            <Link
-              key={t.key}
-              to={t.to}
-              aria-current={active ? "page" : undefined}
-              className={`${tabClass} ${active ? "bg-primary text-primary-foreground shadow" : "hover:text-foreground"}`}
-            >
-              <t.icon className="size-[22px]" />
-              {t.label}
-            </Link>
-          );
-        })}
-      <button type="button" onClick={onOpenMenu} className={`${tabClass} hover:text-foreground`}>
-        <LayoutGrid className="size-[22px]" />
-        Menu
+      <Link
+        to="/admin"
+        aria-label="Beranda"
+        aria-current={homeActive ? "page" : undefined}
+        className={`${side} ${homeActive ? "bg-white/15 text-white" : ""}`}
+      >
+        <Home className="size-[23px]" />
+      </Link>
+      <button
+        type="button"
+        onClick={onOpenSearch}
+        aria-label="Cari"
+        className="-mt-7 grid size-16 place-items-center rounded-full border-4 border-background bg-primary text-primary-foreground shadow-lg shadow-primary/40"
+      >
+        <Search className="size-[26px]" />
+      </button>
+      <button type="button" onClick={onOpenMenu} aria-label="Semua menu" className={side}>
+        <Menu className="size-[23px]" />
       </button>
     </nav>
   );
