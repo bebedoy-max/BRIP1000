@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
+import { useDetailAccess } from "@/lib/access";
 
 import { EventPhotoGrid } from "@/components/EventPhotoGrid";
 
@@ -26,18 +27,15 @@ type Detail = {
 };
 
 /** Nama pekerja yang bisa diklik: membuka pop up detail pekerja. */
-export function EmployeeProfileLink({
-  employeeId,
-  nama,
-}: {
-  employeeId: string;
-  nama: string;
-}) {
+export function EmployeeProfileLink({ employeeId, nama }: { employeeId: string; nama: string }) {
   const [open, setOpen] = useState(false);
+  // Detail pekerja mengikuti hak akses menu Data Pekerja: pengunjung umum hanya
+  // boleh melihat bila diizinkan di pengaturan, dan data tidak diminta sama sekali.
+  const { allowed } = useDetailAccess("pegawai");
 
   const detail = useQuery<Detail | null>({
     queryKey: ["employee-profile", employeeId],
-    enabled: open && !!employeeId,
+    enabled: allowed && open && !!employeeId,
     queryFn: async () => {
       const { data, error } = await db
         .from("employees")
@@ -86,6 +84,8 @@ export function EmployeeProfileLink({
   });
 
   const d = detail.data;
+
+  if (!allowed) return <span>{nama}</span>;
 
   return (
     <>
@@ -160,21 +160,11 @@ export function EmployeeProfileLink({
   );
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3">
-      <dt className="w-28 shrink-0 text-xs text-muted-foreground sm:w-32 sm:text-sm">
-        {label}
-      </dt>
-      <dd className="flex-1 rounded-full border border-border/60 px-4 py-2 text-sm">
-        {children}
-      </dd>
+      <dt className="w-28 shrink-0 text-xs text-muted-foreground sm:w-32 sm:text-sm">{label}</dt>
+      <dd className="flex-1 rounded-full border border-border/60 px-4 py-2 text-sm">{children}</dd>
     </div>
   );
 }

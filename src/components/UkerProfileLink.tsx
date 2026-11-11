@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { PhotoGallery } from "@/components/PhotoGallery";
 import { MapsLink } from "@/components/MapsLink";
 import { EmployeeProfileLink } from "@/components/EmployeeProfileLink";
+import { useDetailAccess } from "@/lib/access";
 
 const db = supabase as unknown as SupabaseClient;
 
@@ -76,9 +77,12 @@ export function UkerProfileLink({
     },
   });
 
+  // Daftar pekerja ikut hak akses menu Data Pekerja (login / pengaturan Pengunjung Umum).
+  const { allowed: canSeeWorkers } = useDetailAccess("pegawai");
+
   const workers = useQuery<Worker[]>({
     queryKey: ["uker-profile-workers", ukerId],
-    enabled: open && !!ukerId,
+    enabled: canSeeWorkers && open && !!ukerId,
     queryFn: async () => {
       const { data, error } = await db
         .from("employees")
@@ -147,12 +151,7 @@ export function UkerProfileLink({
             <dl className="space-y-2">
               <Field label="Alamat">{alamat || "—"}</Field>
               <Field label="Titik Maps">
-                <MapsLink
-                  value={maps}
-                  name={nama}
-                  photoEntity="uker"
-                  entityId={ukerId}
-                />
+                <MapsLink value={maps} name={nama} photoEntity="uker" entityId={ukerId} />
               </Field>
               <Field label="Profile" align="start">
                 <span className="block min-h-24 whitespace-pre-line">
@@ -171,7 +170,11 @@ export function UkerProfileLink({
             <section className="space-y-2">
               <h3 className="text-sm font-semibold">Data Pekerja</h3>
               <div className="rounded-2xl border border-border/60 p-4">
-                {workers.isLoading ? (
+                {!canSeeWorkers ? (
+                  <p className="text-sm text-muted-foreground">
+                    Data pekerja hanya dapat dilihat setelah masuk (login).
+                  </p>
+                ) : workers.isLoading ? (
                   <p className="text-sm text-muted-foreground">Memuat data pekerja…</p>
                 ) : list.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Belum ada pekerja terdaftar.</p>
@@ -221,10 +224,12 @@ function Field({
   return (
     <div className={`flex gap-3 ${align === "start" ? "items-start" : "items-center"}`}>
       <dt className="w-24 shrink-0 text-sm text-muted-foreground">{label}</dt>
-      <dd className="flex-1 rounded-full border border-border/60 px-4 py-2 text-sm data-[block=true]:rounded-2xl" data-block={align === "start"}>
+      <dd
+        className="flex-1 rounded-full border border-border/60 px-4 py-2 text-sm data-[block=true]:rounded-2xl"
+        data-block={align === "start"}
+      >
         {children}
       </dd>
     </div>
   );
 }
-
