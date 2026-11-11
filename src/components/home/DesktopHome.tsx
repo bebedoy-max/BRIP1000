@@ -48,6 +48,7 @@ export function DesktopHome({ infographics }: { infographics: InfographicStat[] 
           <InfographicStats items={infographics} />
         </div>
         <TabbedPanel
+          fill={false}
           tabs={[
             {
               key: "pasar",

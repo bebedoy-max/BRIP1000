@@ -12,11 +12,22 @@ export type PanelTab = {
  * Satu kolom, beberapa panel bertab. Semua isi tab ditumpuk pada sel grid yang sama,
  * sehingga tinggi kolom = tab tertinggi dan tidak melompat saat berganti tab.
  */
-export function TabbedPanel({ tabs, className = "" }: { tabs: PanelTab[]; className?: string }) {
+export function TabbedPanel({
+  tabs,
+  className = "",
+  fill = true,
+}: {
+  tabs: PanelTab[];
+  className?: string;
+  /** true: ikut tinggi sel induk (h-full); false: setinggi isinya (untuk rel flex). */
+  fill?: boolean;
+}) {
   const [active, setActive] = useState(tabs[0]?.key ?? "");
 
   return (
-    <section className={`glass-card flex h-full min-w-0 flex-col p-4 ${className}`}>
+    <section
+      className={`glass-card flex min-w-0 flex-col p-4 ${fill ? "h-full" : ""} ${className}`}
+    >
       <div
         role="tablist"
         className="mb-4 grid shrink-0 gap-1 rounded-full border border-border/60 bg-background/40 p-1"
