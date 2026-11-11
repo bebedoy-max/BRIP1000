@@ -97,12 +97,15 @@ async function loadSlides(): Promise<CarouselData> {
       } catch {
         /* abaikan; fallback kueri langsung di bawah */
       }
-      const missing = evRows.filter((e) => !(byEvent.get(e.id)?.length));
+      const missing = evRows.filter((e) => !byEvent.get(e.id)?.length);
       if (missing.length) {
         const { data } = await db
           .from("event_photos")
           .select("event_id,drive_file_id,processed_at")
-          .in("event_id", missing.map((e) => e.id))
+          .in(
+            "event_id",
+            missing.map((e) => e.id),
+          )
           .order("processed_at", { ascending: false })
           .limit(400);
         const rows = (data ?? []) as { event_id: string; drive_file_id: string }[];
@@ -259,7 +262,6 @@ export function HomeCarousel() {
     return () => clearInterval(t);
   }, [slides.length]);
 
-
   // Foto per slide dipilih sekali (stabil) supaya gambar tidak berganti di
   // tengah transisi. Foto dengan wajah terdeteksi diutamakan.
   const photoBySlide = useMemo(() => {
@@ -294,122 +296,186 @@ export function HomeCarousel() {
   const active = slides[idx % (slides.length || 1)];
   const photoOf = (s: Slide) => photoBySlide[s.id] ?? null;
 
+  const prev = () => setIdx((i) => (i - 1 + slides.length) % slides.length);
+  const next = () => setIdx((i) => (i + 1) % slides.length);
+
+  const navButton =
+    "grid size-9 place-items-center rounded-full border border-border/70 bg-background/70 shadow-lg backdrop-blur transition-colors hover:border-primary/60";
+
   return (
-    <div className="glass-card relative aspect-video w-full overflow-hidden">
-      {slides.map((s, i) => {
-        const photo = photoOf(s);
-        return (
-        <div
-          key={s.id}
-          className="absolute inset-0 transition-opacity duration-700"
-          style={{ opacity: i === idx ? 1 : 0, pointerEvents: i === idx ? "auto" : "none" }}
-        >
-          {photo && mounted.has(i) ? (
-            <SlideImage
-              photo={photo}
-              focus={focusMap[photo]}
-              alt={s.title}
-              className="absolute inset-0 size-full object-cover"
-            />
-          ) : !photo ? (
+    <div className="glass-card w-full overflow-hidden">
+      {/* Area foto: di mobile tanpa teks di atas foto agar wajah tidak tertutup */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden sm:aspect-video">
+        {slides.map((s, i) => {
+          const photo = photoOf(s);
+          return (
             <div
-              className="absolute inset-0"
-              style={{ backgroundImage: "var(--gradient-stat)", opacity: 0.35 }}
-            />
-          ) : null}
-          <div className="absolute inset-0 bg-gradient-to-t from-background/85 via-background/35 via-[25%] to-transparent to-[42%]" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/40 via-transparent to-transparent" />
-        </div>
-        );
-      })}
-
-      {!slides.length ? (
-        <div className="grid aspect-video w-full place-items-center text-muted-foreground">
-          <ImageOff className="size-6" />
-        </div>
-      ) : null}
-
-      {active?.to ? (
-        <Link
-          to={active.to.to}
-          params={active.to.params}
-          search={{ from: "/" }}
-          aria-label={`Buka ${active.title}`}
-          className="absolute inset-0 z-10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        />
-      ) : null}
-
-      <div className="pointer-events-none relative z-20 flex aspect-video w-full flex-col justify-end p-6 sm:p-8">
-        {active ? (
-          <>
-            <span
-              className="w-fit rounded-full border border-primary/40 bg-background/70 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-accent uppercase shadow-lg backdrop-blur"
-              style={{ textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}
+              key={s.id}
+              className="absolute inset-0 transition-opacity duration-700"
+              style={{ opacity: i === idx ? 1 : 0, pointerEvents: i === idx ? "auto" : "none" }}
             >
+              {photo && mounted.has(i) ? (
+                <SlideImage
+                  photo={photo}
+                  focus={focusMap[photo]}
+                  alt={s.title}
+                  className="absolute inset-0 size-full object-cover"
+                />
+              ) : !photo ? (
+                <div
+                  className="absolute inset-0"
+                  style={{ backgroundImage: "var(--gradient-stat)", opacity: 0.35 }}
+                />
+              ) : null}
+              <div className="absolute inset-0 hidden bg-gradient-to-t from-background/85 via-background/35 via-[25%] to-transparent to-[42%] sm:block" />
+              <div className="absolute inset-0 hidden bg-gradient-to-r from-background/40 via-transparent to-transparent sm:block" />
+              {/* Mobile: bayangan tipis hanya di tepi bawah foto untuk lencana */}
+              <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/35 to-transparent sm:hidden" />
+            </div>
+          );
+        })}
+
+        {!slides.length ? (
+          <div className="grid size-full place-items-center text-muted-foreground">
+            <ImageOff className="size-6" />
+          </div>
+        ) : null}
+
+        {active?.to ? (
+          <Link
+            to={active.to.to}
+            params={active.to.params}
+            search={{ from: "/" }}
+            aria-label={`Buka ${active.title}`}
+            className="absolute inset-0 z-10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          />
+        ) : null}
+
+        {/* Mobile: lencana jenis + penghitung di sudut foto */}
+        {active ? (
+          <div className="pointer-events-none absolute inset-x-3 top-3 z-20 flex items-center justify-between sm:hidden">
+            <span className="rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-bold tracking-[0.14em] text-white uppercase backdrop-blur">
               {active.kind}
             </span>
-            <h2
-              className="mt-3 max-w-2xl text-2xl leading-tight font-bold text-foreground sm:text-4xl"
-              style={{
-                textShadow: "0 2px 4px rgba(0,0,0,0.7), 0 4px 14px rgba(0,0,0,0.5)",
-                WebkitTextStroke: "0.5px rgba(0,0,0,0.35)",
-              }}
-            >
-              {active.title}
-            </h2>
-            <p
-              className="mt-2 line-clamp-2 max-w-xl text-sm font-medium text-foreground/90"
-              style={{ textShadow: "0 1px 3px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.5)" }}
-            >
-              {active.subtitle}
-            </p>
+            {slides.length > 1 ? (
+              <span className="rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-semibold text-white tabular-nums backdrop-blur">
+                {idx + 1}/{slides.length}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* Desktop/tablet: teks di atas foto seperti semula */}
+        <div className="pointer-events-none absolute inset-0 z-20 hidden flex-col justify-end p-8 sm:flex">
+          {active ? (
+            <>
+              <span
+                className="w-fit rounded-full border border-primary/40 bg-background/70 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-accent uppercase shadow-lg backdrop-blur"
+                style={{ textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}
+              >
+                {active.kind}
+              </span>
+              <h2
+                className="mt-3 max-w-2xl text-4xl leading-tight font-bold text-foreground"
+                style={{
+                  textShadow: "0 2px 4px rgba(0,0,0,0.7), 0 4px 14px rgba(0,0,0,0.5)",
+                  WebkitTextStroke: "0.5px rgba(0,0,0,0.35)",
+                }}
+              >
+                {active.title}
+              </h2>
+              <p
+                className="mt-2 line-clamp-2 max-w-xl text-sm font-medium text-foreground/90"
+                style={{ textShadow: "0 1px 3px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.5)" }}
+              >
+                {active.subtitle}
+              </p>
+              {active.to ? (
+                <Link
+                  to={active.to.to}
+                  params={active.to.params}
+                  search={{ from: "/" }}
+                  className="pointer-events-auto mt-4 w-fit rounded-xl border border-border/70 bg-background/70 px-4 py-2 text-sm font-medium shadow-lg backdrop-blur transition-colors hover:border-primary/60 hover:text-foreground"
+                >
+                  Lihat detail
+                </Link>
+              ) : null}
+            </>
+          ) : null}
+
+          {slides.length > 1 ? (
+            <div className="pointer-events-auto mt-5 flex items-center gap-2">
+              <button type="button" aria-label="Sebelumnya" onClick={prev} className={navButton}>
+                <ChevronLeft className="size-4" />
+              </button>
+              <button type="button" aria-label="Berikutnya" onClick={next} className={navButton}>
+                <ChevronRight className="size-4" />
+              </button>
+              <div className="ml-2 flex flex-wrap gap-1.5">
+                {slides.map((s, i) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    aria-label={`Slide ${i + 1}`}
+                    onClick={() => setIdx(i)}
+                    className={`h-1.5 rounded-full transition-all ${
+                      i === idx ? "w-6 bg-primary" : "w-2 bg-border"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Mobile: judul & kontrol di bawah foto */}
+      {active ? (
+        <div className="space-y-3 p-4 sm:hidden">
+          <div className="min-w-0">
+            <h2 className="line-clamp-2 text-[17px] leading-snug font-bold">{active.title}</h2>
+            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{active.subtitle}</p>
+          </div>
+          <div className="flex items-center gap-2">
             {active.to ? (
               <Link
                 to={active.to.to}
                 params={active.to.params}
                 search={{ from: "/" }}
-                className="pointer-events-auto mt-4 w-fit rounded-xl border border-border/70 bg-background/70 px-4 py-2 text-sm font-medium shadow-lg backdrop-blur transition-colors hover:border-primary/60 hover:text-foreground"
+                className="flex h-10 flex-1 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
               >
                 Lihat detail
               </Link>
+            ) : (
+              <span className="flex-1" />
+            )}
+            {slides.length > 1 ? (
+              <>
+                <button type="button" aria-label="Sebelumnya" onClick={prev} className={navButton}>
+                  <ChevronLeft className="size-4" />
+                </button>
+                <button type="button" aria-label="Berikutnya" onClick={next} className={navButton}>
+                  <ChevronRight className="size-4" />
+                </button>
+              </>
             ) : null}
-          </>
-        ) : null}
-
-        {slides.length > 1 ? (
-          <div className="pointer-events-auto mt-5 flex items-center gap-2">
-            <button
-              type="button"
-              aria-label="Sebelumnya"
-              onClick={() => setIdx((i) => (i - 1 + slides.length) % slides.length)}
-              className="grid size-8 place-items-center rounded-full border border-border/70 bg-background/70 shadow-lg backdrop-blur transition-colors hover:border-primary/60"
-            >
-              <ChevronLeft className="size-4" />
-            </button>
-            <button
-              type="button"
-              aria-label="Berikutnya"
-              onClick={() => setIdx((i) => (i + 1) % slides.length)}
-              className="grid size-8 place-items-center rounded-full border border-border/70 bg-background/70 shadow-lg backdrop-blur transition-colors hover:border-primary/60"
-            >
-              <ChevronRight className="size-4" />
-            </button>
-            <div className="ml-2 flex flex-wrap gap-1.5">
-              {slides.map((s, i) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  aria-label={`Slide ${i + 1}`}
-                  onClick={() => setIdx(i)}
-                  className={`h-1.5 rounded-full transition-all ${
-                    i === idx ? "w-6 bg-primary" : "w-2 bg-border"
-                  }`}
-                />
-              ))}
-            </div>
           </div>
-        ) : null}
-      </div>
+          {slides.length > 1 ? (
+            <div
+              className="h-1 w-full overflow-hidden rounded-full bg-border/60"
+              role="progressbar"
+              aria-valuemin={1}
+              aria-valuemax={slides.length}
+              aria-valuenow={idx + 1}
+            >
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-500"
+                style={{ width: `${((idx + 1) / slides.length) * 100}%` }}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
