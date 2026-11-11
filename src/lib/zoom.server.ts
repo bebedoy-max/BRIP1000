@@ -71,12 +71,13 @@ export async function saveAccount(input: {
   return data.id as string;
 }
 
-export function authorizeUrl(acc: ZoomAccount) {
+export async function authorizeUrl(acc: ZoomAccount) {
+  const { signOAuthState } = await import("@/lib/oauth-state.server");
   const p = new URLSearchParams({
     response_type: "code",
     client_id: acc.client_id,
     redirect_uri: acc.redirect_uri,
-    state: acc.id,
+    state: await signOAuthState(acc.id),
   });
   return `https://zoom.us/oauth/authorize?${p.toString()}`;
 }

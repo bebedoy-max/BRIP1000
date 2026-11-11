@@ -26,7 +26,11 @@ async function fetchPrice(symbol: string): Promise<{ price: number; prev: number
     const json = (await res.json()) as {
       chart?: {
         result?: {
-          meta?: { regularMarketPrice?: number; chartPreviousClose?: number; previousClose?: number };
+          meta?: {
+            regularMarketPrice?: number;
+            chartPreviousClose?: number;
+            previousClose?: number;
+          };
         }[];
       };
     };
@@ -76,16 +80,19 @@ export type ArticleContent = {
 /** Ambil isi artikel dari URL untuk ditampilkan dalam pop-up bacaan. */
 export const getArticleContent = createServerFn({ method: "POST" })
   .inputValidator((data) =>
-    z.object({ url: z.string().url(), headline: z.string().trim().max(500).optional(), source: z.string().trim().max(100).optional() }).parse(data),
+    z
+      .object({
+        url: z.string().url(),
+        headline: z.string().trim().max(500).optional(),
+        source: z.string().trim().max(100).optional(),
+      })
+      .parse(data),
   )
   .handler(async ({ data }): Promise<ArticleContent> => {
     const { readArticle } = await import("./article-reader.server");
+    (await import("./rate-limit.server")).limit("article", 30, 60_000);
     return readArticle(data);
   });
-
-
-
-
 
 export const NEWS_CATEGORIES = ["Dunia", "Nasional", "Teknologi", "BRI", "Kebijakan"] as const;
 export type NewsCategory = (typeof NEWS_CATEGORIES)[number];
@@ -105,9 +112,15 @@ const pick = (xml: string, tag: string) => {
 const NEWS_QUERIES: Record<NewsCategory, string[]> = {
   Dunia: ["when:3d berita dunia ekonomi keuangan internasional", "when:3d global business markets"],
   Nasional: ["when:2d berita nasional Indonesia terkini", "when:3d ekonomi Indonesia bisnis"],
-  Teknologi: ["when:3d teknologi digital AI fintech", "when:3d digital banking cybersecurity technology"],
-  BRI: ['when:7d "Bank BRI" OR BBRI', 'when:14d BRI perbankan digital UMKM'],
-  Kebijakan: ["when:7d Bank Indonesia OJK kebijakan perbankan", "when:7d pemerintah regulasi ekonomi keuangan"],
+  Teknologi: [
+    "when:3d teknologi digital AI fintech",
+    "when:3d digital banking cybersecurity technology",
+  ],
+  BRI: ['when:7d "Bank BRI" OR BBRI', "when:14d BRI perbankan digital UMKM"],
+  Kebijakan: [
+    "when:7d Bank Indonesia OJK kebijakan perbankan",
+    "when:7d pemerintah regulasi ekonomi keuangan",
+  ],
 };
 
 async function fetchGoogleNews(query: string, limit: number): Promise<NewsItem[]> {
@@ -153,20 +166,21 @@ function mergeUnique(lists: NewsItem[][]): NewsItem[] {
 const NEWS_TARGET = 8;
 
 /** Berita perbankan, bisnis, keuangan & fintech — minimal 10 item, diutamakan yang isinya terbaca. */
-export const getNews = createServerFn({ method: "GET" }).handler(async (): Promise<NewsByCategory> => {
-  const { keepReadableCached } = await import("./news-readable.server");
-  const entries = await Promise.all(
-    NEWS_CATEGORIES.map(async (category) => {
-      const merged = mergeUnique(
-        await Promise.all(NEWS_QUERIES[category].map((query) => fetchGoogleNews(query, 12))),
-      );
-      const items = await keepReadableCached(merged.slice(0, 24), NEWS_TARGET, 8_000, category);
-      return [category, items] as const;
-    }),
-  );
-  return Object.fromEntries(entries) as NewsByCategory;
-});
-
+export const getNews = createServerFn({ method: "GET" }).handler(
+  async (): Promise<NewsByCategory> => {
+    const { keepReadableCached } = await import("./news-readable.server");
+    const entries = await Promise.all(
+      NEWS_CATEGORIES.map(async (category) => {
+        const merged = mergeUnique(
+          await Promise.all(NEWS_QUERIES[category].map((query) => fetchGoogleNews(query, 12))),
+        );
+        const items = await keepReadableCached(merged.slice(0, 24), NEWS_TARGET, 8_000, category);
+        return [category, items] as const;
+      }),
+    );
+    return Object.fromEntries(entries) as NewsByCategory;
+  },
+);
 
 /** Suku bunga Deposito & Giro BRI (cache 6 jam di server). */
 export const getBankRates = createServerFn({ method: "GET" }).handler(async () => {
@@ -174,7 +188,12 @@ export const getBankRates = createServerFn({ method: "GET" }).handler(async () =
   return load();
 });
 
-export type PublicWinner = { category: string; name: string; position: string; photo: string | null };
+export type PublicWinner = {
+  category: string;
+  name: string;
+  position: string;
+  photo: string | null;
+};
 
 /** Pemenang (nominee pertama tiap kategori) dari acara nominasi terbaru — untuk dashboard umum. */
 export const getPublicNominasiWinners = createServerFn({ method: "GET" }).handler(async () => {

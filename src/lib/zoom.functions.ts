@@ -4,7 +4,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 export const getZoomStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { assertAdmin, getAccountRow, authorizeUrl, listMeetings } = await import("@/lib/zoom.server");
+    const { assertAdmin, getAccountRow, authorizeUrl, listMeetings } =
+      await import("@/lib/zoom.server");
     await assertAdmin(context.supabase, context.userId);
     const acc = await getAccountRow();
     return {
@@ -13,7 +14,7 @@ export const getZoomStatus = createServerFn({ method: "GET" })
       clientId: acc?.client_id ?? "",
       redirectUri: acc?.redirect_uri ?? "https://bripringsewu.web.id/api/zoom/callback",
       accountEmail: acc?.account_email ?? null,
-      authorizeUrl: acc ? authorizeUrl(acc) : null,
+      authorizeUrl: acc ? await authorizeUrl(acc) : null,
       meetings: acc ? await listMeetings() : [],
     };
   });

@@ -22,14 +22,26 @@ export const checkVoter = createServerFn({ method: "POST" })
   .inputValidator((data: { slug: string; pn: string }) => data)
   .handler(async ({ data }) => {
     const { voterStatus } = await import("@/lib/vote.server");
-    return voterStatus(data.slug, data.pn);
+    const rl = await import("@/lib/rate-limit.server");
+    rl.limit("vote-check", 400, 10 * 60_000);
+    rl.assertNotLocked("vote-fail", 30);
+    const res = await voterStatus(data.slug, data.pn);
+    if (!res.valid && (res.reason === "not_found" || res.reason === "format"))
+      rl.recordFailure("vote-fail", 10 * 60_000);
+    return res;
   });
 
 export const submitVote = createServerFn({ method: "POST" })
   .inputValidator((data: { slug: string; pn: string; category: string; nominee: string }) => data)
   .handler(async ({ data }) => {
     const { castVote } = await import("@/lib/vote.server");
-    return castVote(data.slug, data.pn, data.category, data.nominee);
+    const rl = await import("@/lib/rate-limit.server");
+    rl.limit("vote-cast", 400, 10 * 60_000);
+    rl.assertNotLocked("vote-fail", 30);
+    const res = await castVote(data.slug, data.pn, data.category, data.nominee);
+    if (!res.ok && (res.reason === "not_found" || res.reason === "format"))
+      rl.recordFailure("vote-fail", 10 * 60_000);
+    return res;
   });
 
 /* --------------------------------- admin -------------------------------- */
@@ -199,11 +211,10 @@ export const listVoteEmployees = createServerFn({ method: "GET" })
         personalNumber: pn,
         jabatan: (r["jabatan"]?.["nama_jabatan"] as string | null) ?? null,
         uker: (r["uker"]?.["nama_uker"] as string | null) ?? null,
-        foto: byWorker.get(String(r["id"])) ?? (pn ? byPn.get(pn) ?? null : null),
+        foto: byWorker.get(String(r["id"])) ?? (pn ? (byPn.get(pn) ?? null) : null),
       };
     });
   });
-
 
 /** Dashboard pengumuman pemenang (publik, hanya baca). */
 export const getVoteShowcase = createServerFn({ method: "GET" })
@@ -216,7 +227,9 @@ export const getVoteShowcase = createServerFn({ method: "GET" })
 /** Semua foto pekerja di database (master wajah + foto event) untuk dipilih admin. */
 export const listVoteWorkerPhotos = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { workerId?: string | undefined; personalNumber?: string | undefined }) => data)
+  .inputValidator(
+    (data: { workerId?: string | undefined; personalNumber?: string | undefined }) => data,
+  )
   .handler(async ({ data }) => {
     const { workerPhotos } = await import("@/lib/vote.server");
     return workerPhotos(data);

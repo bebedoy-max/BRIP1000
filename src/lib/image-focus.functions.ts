@@ -32,6 +32,7 @@ export const getImageFocus = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<ImageFocusMap> => {
     const { images } = data;
     if (!images.length) return {};
+    (await import("@/lib/rate-limit.server")).limit("image-focus", 20, 60_000);
 
     const { readFocusCache, writeFocusCache } = await import("@/lib/image-focus.server");
     const { detectFaceFocus } = await import("@/lib/image-focus.server");

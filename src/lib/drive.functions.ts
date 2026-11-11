@@ -22,7 +22,9 @@ export const listDriveAccounts = createServerFn({ method: "GET" })
     const db = supabaseAdmin as unknown as { from: (t: string) => any };
     const { data, error } = await db
       .from("drive_accounts")
-      .select("id,label,client_id,root_folder_name,root_folder_id,account_email,is_active,refresh_token")
+      .select(
+        "id,label,client_id,root_folder_name,root_folder_id,account_email,is_active,refresh_token",
+      )
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
     return (data ?? []).map((r: Record<string, unknown>) => ({
@@ -119,7 +121,8 @@ export const driveAuthUrl = createServerFn({ method: "POST" })
     url.searchParams.set("scope", DRIVE_SCOPES);
     url.searchParams.set("access_type", "offline");
     url.searchParams.set("prompt", "consent");
-    url.searchParams.set("state", acc.id);
+    const { signOAuthState } = await import("@/lib/oauth-state.server");
+    url.searchParams.set("state", await signOAuthState(acc.id));
     return { url: url.toString() };
   });
 
@@ -167,7 +170,12 @@ export const uploadEntityPhoto = createServerFn({ method: "POST" })
     const drive = await import("@/lib/drive.server");
     const acc = await drive.getActiveAccount();
     const token = await drive.accessToken(acc);
-    const folderId = await drive.ensureEntityFolder(acc, token, data.entity as PhotoEntity, data.subfolder);
+    const folderId = await drive.ensureEntityFolder(
+      acc,
+      token,
+      data.entity as PhotoEntity,
+      data.subfolder,
+    );
     const binary = atob(data.base64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);

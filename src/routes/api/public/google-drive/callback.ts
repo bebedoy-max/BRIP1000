@@ -17,8 +17,12 @@ export const Route = createFileRoute("/api/public/google-drive/callback")({
         if (!code || !state) return page("Kode otorisasi tidak lengkap.");
 
         try {
+          const { verifyOAuthState } = await import("@/lib/oauth-state.server");
+          const accountId = await verifyOAuthState(state);
+          if (!accountId)
+            return page("Permintaan tidak valid atau kedaluwarsa. Mulai lagi dari panel.");
           const { getAccount } = await import("@/lib/drive.server");
-          const acc = await getAccount(state);
+          const acc = await getAccount(accountId);
           const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
             method: "POST",
             headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -33,7 +37,8 @@ export const Route = createFileRoute("/api/public/google-drive/callback")({
           const body = await tokenRes.text();
           if (!tokenRes.ok) return page(`Gagal menghubungkan Google Drive (${tokenRes.status}).`);
           const tok = JSON.parse(body) as { refresh_token?: string; access_token?: string };
-          if (!tok.refresh_token) return page("Google tidak mengirim refresh token. Coba hubungkan ulang.");
+          if (!tok.refresh_token)
+            return page("Google tidak mengirim refresh token. Coba hubungkan ulang.");
 
           let email: string | null = null;
           if (tok.access_token) {

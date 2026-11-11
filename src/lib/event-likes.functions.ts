@@ -21,8 +21,11 @@ export const getEventLikes = createServerFn({ method: "GET" }).handler(
 export const toggleEventLike = createServerFn({ method: "POST" })
   .inputValidator((input: { eventId: string; visitorId: string }) => input)
   .handler(async ({ data }): Promise<{ liked: boolean; likes: number }> => {
+    (await import("@/lib/rate-limit.server")).limit("event-like", 30, 60_000);
     const eventId = String(data.eventId ?? "").trim();
-    const visitorId = String(data.visitorId ?? "").trim().slice(0, 64);
+    const visitorId = String(data.visitorId ?? "")
+      .trim()
+      .slice(0, 64);
     if (!eventId || !visitorId) throw new Error("Parameter like tidak valid.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

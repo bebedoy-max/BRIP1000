@@ -10,8 +10,9 @@ export type PhotoKind = "event" | "entity";
 export const purgeMissingPhoto = createServerFn({ method: "POST" })
   .inputValidator((input: { kind: PhotoKind; driveFileId: string }) => input)
   .handler(async ({ data }): Promise<{ removed: boolean; reason: string }> => {
+    (await import("@/lib/rate-limit.server")).limit("photo-purge", 30, 60_000);
     const fileId = String(data.driveFileId ?? "").trim();
-    if (!fileId) return { removed: false, reason: "no-id" };
+    if (!fileId || !/^[\w-]{10,120}$/.test(fileId)) return { removed: false, reason: "no-id" };
 
     const drive = await import("@/lib/drive.server");
     const acc = await drive.getActiveAccount();

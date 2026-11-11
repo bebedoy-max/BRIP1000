@@ -23,6 +23,7 @@ export const submitAbsensi = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
+    (await import("@/lib/rate-limit.server")).limit("absensi-submit", 300, 10 * 60_000);
     const { insertEntry } = await import("@/lib/absensi.server");
     await insertEntry(data);
     return { ok: true };
@@ -136,5 +137,6 @@ export const searchAbsensiEmployees = createServerFn({ method: "POST" })
   .inputValidator((data: { term: string; slug: string }) => data)
   .handler(async ({ data }) => {
     const { searchEmployeesByName } = await import("@/lib/absensi.server");
+    (await import("@/lib/rate-limit.server")).limit("absensi-search", 300, 60_000);
     return searchEmployeesByName(String(data.term ?? ""), String(data.slug ?? ""));
   });

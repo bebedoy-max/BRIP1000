@@ -17,9 +17,13 @@ export async function handleZoomCallback(request: Request) {
 
   try {
     const { exchangeCode, getAccountRow } = await import("@/lib/zoom.server");
+    // State bertanda tangan dibuat saat admin menekan "Hubungkan Zoom"; tanpa itu ditolak.
+    const { verifyOAuthState } = await import("@/lib/oauth-state.server");
+    const accountId = await verifyOAuthState(state);
+    if (!accountId) return page("Permintaan tidak valid atau kedaluwarsa. Mulai lagi dari panel.");
     const acc = await getAccountRow();
     if (!acc) return page("Kredensial Zoom belum diisi di panel.");
-    const email = await exchangeCode(state || acc.id, code, acc.redirect_uri);
+    const email = await exchangeCode(accountId, code, acc.redirect_uri);
     return page(`Zoom berhasil terhubung${email ? ` (${email})` : ""}.`);
   } catch (e) {
     console.error(e);
