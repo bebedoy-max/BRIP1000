@@ -176,6 +176,7 @@ function SectionScreen({
   onChangeQris,
   onChangeKehadiran,
   onCommit,
+  isShortcut,
   inputIndexOf,
   registerInput,
   focusNext,
@@ -199,11 +200,14 @@ function SectionScreen({
   jabatanOf: (nama: string) => string;
   onChangeQris: (pekerja: string, value: string) => void;
   onChangeKehadiran: (pekerja: string, value: string) => void;
-  onCommit: (pekerja: string) => void;
+  onCommit: (pekerja: string, raw?: string) => void;
+  /** True bila isi kolom adalah kode cepat (kehadiran/merchant): saran datalist dimatikan agar Enter tidak memilih saran acak. */
+  isShortcut: (value: string) => boolean;
   inputIndexOf: (sectionId: string, row: number) => number;
   registerInput: (idx: number, el: HTMLInputElement | null) => void;
   focusNext: (idx: number) => void;
 }) {
+  const skipBlurRef = useRef(false);
   // Semua bagian — termasuk yang hanya berisi satu pekerja — memakai
   // perilaku zoom & scroll yang sama dengan bagian berpekerja banyak.
   const solo = false;
@@ -296,19 +300,27 @@ function SectionScreen({
                     <input
                       ref={(el) => registerInput(idx, el)}
                       value={cell.qris}
-                      list="doa-qris-list"
+                      list={isShortcut(cell.qris) ? undefined : "doa-qris-list"}
 
                       onChange={(e) => onChangeQris(nama, e.target.value)}
                       onFocus={() => onFocusRow(idx)}
-                      onBlur={() => {
-                        if (cell.qris.trim()) onCommit(nama);
+                      onBlur={(e) => {
+                        // Enter sudah mengunci baris ini; jangan kunci dua kali saat fokus pindah.
+                        if (skipBlurRef.current) return;
+                        const v = e.currentTarget.value;
+                        if (v.trim()) onCommit(nama, v);
                       }}
 
                       onKeyDown={(e) => {
                         if (e.key !== "Enter") return;
                         e.preventDefault();
-                        onCommit(nama);
+                        // Pakai nilai langsung dari input (bukan state yang bisa tertinggal saat mengetik cepat).
+                        skipBlurRef.current = true;
+                        onCommit(nama, e.currentTarget.value);
                         focusNext(idx);
+                        window.setTimeout(() => {
+                          skipBlurRef.current = false;
+                        }, 0);
                       }}
                       className="doa-input"
                     />
@@ -640,9 +652,14 @@ function Page() {
       .replace(/\S+/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
   }
 
-  function commit(sectionId: string, pekerja: string) {
+  /** Kode cepat (kehadiran / merchant) pada kolom QRIS. */
+  const isShortcut = (v: string) =>
+    !!v.trim() && (!!matchKehadiran(v, options) || !!matchMerchantShortcut(v, merchantShortcuts));
+
+  function commit(sectionId: string, pekerja: string, raw?: string) {
     const k = recordKey(sectionId, pekerja, today);
-    const cur = draft[k] ?? { qris: "", kehadiran: "" };
+    const stored = draft[k] ?? { qris: "", kehadiran: "" };
+    const cur = { ...stored, qris: raw ?? stored.qris };
     const code = matchKehadiran(cur.qris, options);
     const merchant = code ? null : matchMerchantShortcut(cur.qris, merchantShortcuts);
     // Enter pada kolom QRIS kosong: tandai "Kosong" + "Hadir" (bulatan silang).
@@ -800,7 +817,8 @@ function Page() {
               const cur = draft[recordKey(s.id, p, today)];
               save.mutate({ sectionId: s.id, pekerja: p, qris: cur?.qris ?? "", kehadiran: v });
             }}
-            onCommit={(p) => commit(s.id, p)}
+            onCommit={(p, raw) => commit(s.id, p, raw)}
+            isShortcut={isShortcut}
             inputIndexOf={(sid, row) => (offsets.map[sid] ?? 0) + row}
             registerInput={(idx, el) => {
               inputs.current[idx] = el;
