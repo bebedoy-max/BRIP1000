@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MapPin } from "lucide-react";
+import { ExternalLink, Loader2, MapPin, Navigation } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,15 @@ import {
 import { Button } from "@/components/ui/button";
 import type { PhotoEntity } from "@/lib/drive-entities";
 import { PhotoGallery } from "@/components/PhotoGallery";
+
+/** Perangkat seluler (HP/tablet): navigasi langsung dibuka di aplikasi Google Maps. */
+function isMobileDevice() {
+  if (typeof navigator === "undefined") return false;
+  return (
+    /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+    (navigator.maxTouchPoints > 1 && /Mac/i.test(navigator.platform))
+  );
+}
 
 export function parseLatLng(value: unknown): { lat: number; lng: number } | null {
   if (value === null || value === undefined) return null;
@@ -40,7 +49,9 @@ export function MapsLink({
   entityId?: string | undefined;
 }) {
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<"map" | "photo" | "street">("map");
+  const [mode, setMode] = useState<"map" | "photo" | "street" | "route">("map");
+  const [origin, setOrigin] = useState<{ lat: number; lng: number } | null>(null);
+  const [geo, setGeo] = useState<"idle" | "loading" | "denied" | "ok">("idle");
   const pos = parseLatLng(value);
 
   if (!pos) {
@@ -52,8 +63,47 @@ export function MapsLink({
   const embedMap = `https://maps.google.com/maps?q=${coord}&z=17&hl=id&output=embed`;
   const embedStreet = `https://maps.google.com/maps?q=&layer=c&cbll=${coord}&cbp=11,0,0,0,0&hl=id&output=svembed`;
 
-  const src = mode === "street" ? embedStreet : embedMap;
-  const title = mode === "street" ? "Google Street View" : "Google Maps";
+  const originCoord = origin ? `${origin.lat},${origin.lng}` : "";
+  // Rute dari lokasi pengguna ke titik tujuan (tanpa API key).
+  const embedRoute = `https://maps.google.com/maps?${
+    originCoord ? `saddr=${originCoord}&` : ""
+  }daddr=${coord}&dirflg=d&hl=id&output=embed`;
+  const routeUrl = `https://www.google.com/maps/dir/?api=1&${
+    originCoord ? `origin=${originCoord}&` : ""
+  }destination=${coord}&travelmode=driving`;
+  // Di HP: tautan universal Google Maps membuka aplikasi dan langsung memulai navigasi.
+  const navigateUrl = `https://www.google.com/maps/dir/?api=1&destination=${coord}&travelmode=driving&dir_action=navigate`;
+
+  const src = mode === "street" ? embedStreet : mode === "route" ? embedRoute : embedMap;
+  const title =
+    mode === "street"
+      ? "Google Street View"
+      : mode === "route"
+        ? "Rute Google Maps"
+        : "Google Maps";
+
+  function startNavigation() {
+    if (isMobileDevice()) {
+      window.open(navigateUrl, "_blank", "noopener");
+      return;
+    }
+    // Komputer: tampilkan rute dari lokasi yang terdeteksi browser.
+    setMode("route");
+    if (origin || geo === "loading") return;
+    if (!navigator.geolocation) {
+      setGeo("denied");
+      return;
+    }
+    setGeo("loading");
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        setOrigin({ lat: p.coords.latitude, lng: p.coords.longitude });
+        setGeo("ok");
+      },
+      () => setGeo("denied"),
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 },
+    );
+  }
 
   return (
     <>
@@ -79,7 +129,10 @@ export function MapsLink({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" size="sm" onClick={startNavigation} className="gap-1.5">
+              <Navigation className="size-4" /> Mulai Navigasi
+            </Button>
             <Button
               size="sm"
               variant={mode === "map" ? "default" : "secondary"}
@@ -103,6 +156,16 @@ export function MapsLink({
             </Button>
           </div>
 
+          {mode === "route" ? (
+            <p className="text-xs text-muted-foreground">
+              {geo === "loading"
+                ? "Mendeteksi lokasi Anda… izinkan akses lokasi pada browser."
+                : geo === "ok"
+                  ? "Rute dari lokasi Anda saat ini ke titik tujuan."
+                  : "Lokasi Anda tidak terdeteksi. Izinkan akses lokasi di browser, atau masukkan titik awal di peta."}
+            </p>
+          ) : null}
+
           {mode === "photo" ? (
             <div className="rounded-xl border border-border/60 p-3">
               {photoEntity && entityId ? (
@@ -118,7 +181,7 @@ export function MapsLink({
           ) : (
             <div className="overflow-hidden rounded-xl border border-border/60">
               <iframe
-                key={mode}
+                key={`${mode}-${originCoord}`}
                 title={title}
                 src={src}
                 className="h-[420px] w-full"
@@ -128,6 +191,23 @@ export function MapsLink({
               />
             </div>
           )}
+
+          {mode === "route" ? (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {geo === "loading" ? (
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Loader2 className="size-3.5 animate-spin" /> Menunggu izin lokasi…
+                </span>
+              ) : (
+                <span />
+              )}
+              <Button asChild size="sm" variant="secondary">
+                <a href={routeUrl} target="_blank" rel="noreferrer">
+                  <ExternalLink className="size-4" /> Buka rute di Google Maps
+                </a>
+              </Button>
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
     </>
