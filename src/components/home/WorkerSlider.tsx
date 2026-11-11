@@ -68,7 +68,7 @@ export function WorkerSlider({ fill = false }: { fill?: boolean }) {
 
         <div
           className={`mt-3 overflow-hidden rounded-xl border border-border/60 bg-muted ${
-            fill ? "relative min-h-56 flex-1" : ""
+            fill ? "relative min-h-72 flex-1" : ""
           }`}
           style={
             s.glow

@@ -25,6 +25,83 @@ export function BankRatesPanel({ embedded = false }: { embedded?: boolean }) {
       <p className="text-sm text-muted-foreground">Suku bunga belum tersedia.</p>
     ) : null;
 
+  // Mode tab: susunan ringkas satu kolom agar kolom Pasar/Suku Bunga tidak terlalu tinggi.
+  if (embedded) {
+    return (
+      <div className="flex flex-col gap-2.5">
+        {data.deposito ? (
+          <div className="rounded-xl border border-emerald-400/40 bg-background/30 p-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <PiggyBank className="size-4 text-accent" />
+                <p className="text-xs font-semibold">Deposito</p>
+              </div>
+              {data.deposito.lastUpdate ? (
+                <p className="text-[10px] text-muted-foreground">{data.deposito.lastUpdate}</p>
+              ) : null}
+            </div>
+            <p className="mt-1.5 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+              Rupiah / tenor
+            </p>
+            <div className="mt-1 grid grid-cols-6 gap-1">
+              {data.deposito.rupiah.map((r) => (
+                <div
+                  key={r.tenor}
+                  className="rounded-md border border-border/50 bg-background/50 px-0.5 py-1 text-center"
+                >
+                  <p className="text-[9px] text-muted-foreground">{r.tenor}</p>
+                  <p className="text-[11px] font-bold tabular-nums">{r.rate}</p>
+                </div>
+              ))}
+            </div>
+            {data.deposito.valas.length ? (
+              <>
+                <p className="mt-2 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                  Valas / tenor
+                </p>
+                <div className="mt-1 grid grid-cols-4 gap-1">
+                  {data.deposito.valas.map((r) => (
+                    <div
+                      key={r.tenor}
+                      className="rounded-md border border-border/50 bg-background/50 px-0.5 py-1 text-center"
+                    >
+                      <p className="text-[9px] text-muted-foreground">{r.tenor}</p>
+                      <p className="text-[11px] font-bold tabular-nums">{r.rate}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+
+        {data.giro ? (
+          <div className="rounded-xl border border-violet-400/40 bg-background/30 p-2.5">
+            <div className="flex items-center gap-1.5">
+              <Landmark className="size-4 text-accent" />
+              <p className="text-xs font-semibold">Giro (Jasa Giro)</p>
+            </div>
+            <div className="mt-1.5 space-y-1">
+              {data.giro.tiers.map((t, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between rounded-md border border-border/50 bg-background/50 px-2 py-0.5"
+                >
+                  <p className="text-[10.5px] text-muted-foreground">{t.label}</p>
+                  <p className="text-[11px] font-bold tabular-nums">{t.rate}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <p className="text-[10px] text-muted-foreground">
+          Sumber: bri.co.id &amp; eform.bri.co.id — bukan acuan transaksi.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className={embedded ? "flex flex-col gap-3" : "glass-card flex flex-col gap-3 p-5"}>
       {embedded ? null : <PanelLabel icon={Landmark} label="Suku Bunga BRI" accent="rates" />}
