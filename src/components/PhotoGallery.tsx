@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase";
 import { driveImageUrl, type PhotoEntity } from "@/lib/drive-entities";
 import { uploadEntityPhoto, deleteEntityPhoto } from "@/lib/drive.functions";
 import { purgeMissingPhoto } from "@/lib/photo-cleanup.functions";
+import { PhotoStage } from "@/components/PhotoStage";
 
 const db = supabase as unknown as SupabaseClient;
 
@@ -18,7 +19,6 @@ type PhotoRow = {
   drive_file_id: string;
   file_name: string | null;
 };
-
 
 function toBase64(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -72,7 +72,6 @@ export function PhotoGallery({
     },
   });
 
-
   const invalidate = () =>
     void qc.invalidateQueries({ queryKey: ["entity_photos", entity, entityId] });
 
@@ -108,6 +107,14 @@ export function PhotoGallery({
   });
 
   const items = (photos.data ?? []).filter((p) => !broken.includes(p.drive_file_id));
+
+  /** Foto sebelumnya/berikutnya pada galeri ini (berputar). */
+  const step = (dir: 1 | -1) => {
+    if (!preview || items.length < 2) return;
+    const i = items.findIndex((p) => p.drive_file_id === preview);
+    const next = items[(i + dir + items.length) % items.length];
+    if (next) setPreview(next.drive_file_id);
+  };
 
   return (
     <div className="space-y-2">
@@ -148,7 +155,10 @@ export function PhotoGallery({
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {items.map((p) => (
-            <div key={p.id} className="group relative overflow-hidden rounded-xl border border-border/60">
+            <div
+              key={p.id}
+              className="group relative overflow-hidden rounded-xl border border-border/60"
+            >
               <img
                 src={driveImageUrl(p.drive_file_id, 600)}
                 alt={p.file_name ?? "Foto"}
@@ -175,7 +185,12 @@ export function PhotoGallery({
       <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
         <DialogContent className="max-w-3xl">
           {preview ? (
-            <img src={driveImageUrl(preview, 1600)} alt="Foto" className="w-full rounded-xl" />
+            <PhotoStage
+              src={driveImageUrl(preview, 1600)}
+              alt="Foto"
+              onPrev={items.length > 1 ? () => step(-1) : undefined}
+              onNext={items.length > 1 ? () => step(1) : undefined}
+            />
           ) : null}
         </DialogContent>
       </Dialog>

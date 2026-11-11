@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { PhotoGallery } from "@/components/PhotoGallery";
+import { MapsLink } from "@/components/MapsLink";
 
 const db = supabase as unknown as SupabaseClient;
 
@@ -90,7 +91,14 @@ export function MachineProfileLink({
               <dl className="space-y-2">
                 <Field label="TID">{d?.tid || "—"}</Field>
                 <Field label="Alamat">{d?.lokasi || "—"}</Field>
-                <Field label="Titik Maps">{d?.titik_maps || "—"}</Field>
+                <Field label="Titik Maps">
+                  <MapsLink
+                    value={d?.titik_maps}
+                    name={judul}
+                    photoEntity={entity}
+                    entityId={machineId}
+                  />
+                </Field>
                 <Field label="Merk">{d?.merk || "—"}</Field>
                 <Field label="IP Address">{d?.ip_address || "—"}</Field>
               </dl>

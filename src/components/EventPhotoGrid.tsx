@@ -10,6 +10,7 @@ import { getPublicEventPhotoPage } from "@/lib/public-events.functions";
 import { purgeMissingPhoto } from "@/lib/photo-cleanup.functions";
 import { deleteEventPhotos } from "@/lib/event-admin.functions";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { PhotoStage } from "@/components/PhotoStage";
 
 const PAGE_SIZE = 48;
 
@@ -70,7 +71,9 @@ export function EventPhotoGrid({
       }
       let query = db
         .from("event_photos")
-        .select("id,event_id,drive_file_id,drive_view_link,file_name,matched_worker_ids,processed_at")
+        .select(
+          "id,event_id,drive_file_id,drive_view_link,file_name,matched_worker_ids,processed_at",
+        )
         .order("processed_at", { ascending: false })
         .range(pageParam as number, (pageParam as number) + PAGE_SIZE - 1);
       if (eventId) query = query.eq("event_id", eventId);
@@ -79,8 +82,7 @@ export function EventPhotoGrid({
       if (error) throw error;
       return (data ?? []) as EventPhoto[];
     },
-    getNextPageParam: (last, all) =>
-      last.length < PAGE_SIZE ? undefined : all.length * PAGE_SIZE,
+    getNextPageParam: (last, all) => (last.length < PAGE_SIZE ? undefined : all.length * PAGE_SIZE),
   });
 
   useEffect(() => {
@@ -107,6 +109,17 @@ export function EventPhotoGrid({
         <p className="text-sm">{emptyText}</p>
       </div>
     );
+
+  /** Pindah ke foto sebelumnya/berikutnya pada daftar yang sedang tampil (berputar). */
+  const step = (dir: 1 | -1) => {
+    if (!preview || photos.length < 2) return;
+    const i = photos.findIndex((p) => p.id === preview.id);
+    const next = photos[(i + dir + photos.length) % photos.length];
+    if (next) setPreview(next);
+    // Mendekati ujung daftar: muat halaman berikutnya agar bisa terus digeser.
+    if (dir === 1 && i >= photos.length - 3 && q.hasNextPage && !q.isFetchingNextPage)
+      void q.fetchNextPage();
+  };
 
   const toggle = (id: string) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -205,10 +218,11 @@ export function EventPhotoGrid({
           </DialogHeader>
           {preview ? (
             <div className="space-y-3">
-              <img
+              <PhotoStage
                 src={driveFull(preview.drive_file_id)}
                 alt={preview.file_name ?? "Foto event"}
-                className="max-h-[70vh] w-full rounded-xl object-contain"
+                onPrev={photos.length > 1 ? () => step(-1) : undefined}
+                onNext={photos.length > 1 ? () => step(1) : undefined}
               />
               <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
                 <span>
