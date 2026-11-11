@@ -308,7 +308,7 @@ export function HomeCarousel() {
     <div className="glass-card w-full overflow-hidden">
       {/* Area foto. Mobile & tablet: foto 4:3 tanpa teks di atasnya.
           Desktop (lg+): panel navy di kiri berisi teks, foto memudar dari kanan. */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden lg:aspect-video lg:bg-[#071a36]">
+      <div className="relative aspect-[4/3] w-full overflow-hidden lg:aspect-auto lg:h-[420px] lg:bg-[#071a36]">
         <div className="absolute inset-0 lg:left-[26%] lg:[-webkit-mask-image:linear-gradient(90deg,transparent_0,#000_38%)] lg:[mask-image:linear-gradient(90deg,transparent_0,#000_38%)]">
           {slides.map((s, i) => {
             const photo = photoOf(s);
@@ -371,14 +371,14 @@ export function HomeCarousel() {
 
         {/* Desktop: teks di panel kiri (tidak menutupi foto) */}
         {active ? (
-          <div className="pointer-events-none absolute top-[8%] bottom-[9%] left-[5%] z-20 hidden w-[38%] max-w-[500px] flex-col lg:flex">
+          <div className="pointer-events-none absolute top-[8%] bottom-[9%] left-[5%] z-20 hidden w-[46%] max-w-[520px] flex-col lg:flex">
             <div className="flex items-center gap-3.5">
               <span className="h-[3px] w-[34px] rounded-full bg-[#59b3ff]" />
               <span className="text-[13px] font-bold tracking-[0.2em] text-[#59b3ff] uppercase">
                 {active.kind}
               </span>
             </div>
-            <h2 className="mt-auto text-4xl leading-[1.08] font-extrabold tracking-tight text-white xl:text-5xl">
+            <h2 className="mt-auto text-3xl leading-[1.1] font-extrabold tracking-tight text-white xl:text-4xl">
               {active.title}
             </h2>
             <p className="mt-4 line-clamp-2 text-base font-medium text-[#b9cbe6]">

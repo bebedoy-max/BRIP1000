@@ -55,7 +55,8 @@ function Index() {
     if (typeof window === "undefined") return;
     const s = window.location.search;
     const h = window.location.hash;
-    const isOAuth = /[?&](code|error|error_description)=/.test(s) || /(access_token|error)=/.test(h);
+    const isOAuth =
+      /[?&](code|error|error_description)=/.test(s) || /(access_token|error)=/.test(h);
     if (isOAuth) window.location.replace(`/auth${s}${h}`);
   }, []);
 
@@ -89,7 +90,6 @@ function Index() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-
   const stats = useQuery({
     queryKey: ["public-stats"],
     queryFn: async () => ({
@@ -103,24 +103,61 @@ function Index() {
     }),
   });
 
-
   const cards = [
-    { label: "Unit Kerja", value: stats.data?.ukers ?? "—", icon: Building2, hint: "Uker aktif terdaftar", detailKey: "uker" },
-    { label: "ATM/CRM", value: stats.data?.atm ?? "—", icon: Banknote, hint: "Termonitor", detailKey: "atm" },
-    { label: "Mesin EDC", value: stats.data?.edc ?? "—", icon: CreditCard, hint: "Merchant terpasang", detailKey: "edc" },
-    { label: "Qris", value: stats.data?.qris ?? "—", icon: QrCode, hint: "Merchant QRIS", detailKey: "qris" },
-    { label: "Pegawai", value: stats.data?.employees ?? "—", icon: Users, hint: "Seluruh unit kerja", detailKey: "pegawai" },
-    { label: "Project IT", value: stats.data?.projects ?? "—", icon: CalendarDays, hint: "Project berjalan", detailKey: "project" },
-    { label: "Event", value: stats.data?.events ?? "—", icon: CalendarDays, hint: "Acara & kegiatan", detailKey: "event" },
+    {
+      label: "Unit Kerja",
+      value: stats.data?.ukers ?? "—",
+      icon: Building2,
+      hint: "Uker aktif terdaftar",
+      detailKey: "uker",
+    },
+    {
+      label: "ATM/CRM",
+      value: stats.data?.atm ?? "—",
+      icon: Banknote,
+      hint: "Termonitor",
+      detailKey: "atm",
+    },
+    {
+      label: "Mesin EDC",
+      value: stats.data?.edc ?? "—",
+      icon: CreditCard,
+      hint: "Merchant terpasang",
+      detailKey: "edc",
+    },
+    {
+      label: "Qris",
+      value: stats.data?.qris ?? "—",
+      icon: QrCode,
+      hint: "Merchant QRIS",
+      detailKey: "qris",
+    },
+    {
+      label: "Pegawai",
+      value: stats.data?.employees ?? "—",
+      icon: Users,
+      hint: "Seluruh unit kerja",
+      detailKey: "pegawai",
+    },
+    {
+      label: "Project IT",
+      value: stats.data?.projects ?? "—",
+      icon: CalendarDays,
+      hint: "Project berjalan",
+      detailKey: "project",
+    },
+    {
+      label: "Event",
+      value: stats.data?.events ?? "—",
+      icon: CalendarDays,
+      hint: "Acara & kegiatan",
+      detailKey: "event",
+    },
   ];
-
 
   if (redirecting) return <AuthSplash label="Menyiapkan panel Anda..." />;
 
-  const maxStat = Math.max(
-    1,
-    ...cards.map((c) => (typeof c.value === "number" ? c.value : 0)),
-  );
+  const maxStat = Math.max(1, ...cards.map((c) => (typeof c.value === "number" ? c.value : 0)));
   const infographics = cards.map((c) => ({
     label: c.label,
     value: c.value,
@@ -132,20 +169,21 @@ function Index() {
 
   return (
     <PublicLayout>
-      <HomeCarousel />
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-12">
-        <div className="grid content-start gap-4 lg:col-span-3">
-          <InfographicStats items={infographics} />
-          <WorkerSlider />
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_350px]">
+        <div className="xl:col-start-1 xl:row-start-1">
+          <HomeCarousel />
         </div>
-        <div className="grid content-start gap-4 lg:col-span-6">
+
+        <div className="grid content-start gap-4 lg:grid-cols-2 xl:col-start-1 xl:row-start-2">
           <InfoBoard />
           <NewsPanel />
-        </div>
-        <div className="grid content-start gap-4 lg:col-span-3">
-          <MarketPanel />
+          <WorkerSlider />
           <BankRatesPanel />
+        </div>
+
+        <div className="grid content-start gap-4 md:grid-cols-2 xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:grid-cols-1">
+          <InfographicStats items={infographics} />
+          <MarketPanel />
           <UpcomingEvents />
         </div>
       </div>
@@ -165,4 +203,3 @@ function Index() {
     </PublicLayout>
   );
 }
-

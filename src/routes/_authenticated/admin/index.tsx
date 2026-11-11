@@ -142,56 +142,57 @@ function Page() {
           { label: "Event", value: stats.data?.events ?? "—", detailKey: "event" },
         ]}
       />
-      <div className="mt-4 lg:mt-0">
-        <HomeCarousel />
-      </div>
-
-      <div
-        role="tablist"
-        aria-label="Panel informasi"
-        className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 lg:hidden"
-      >
-        {mobileTabs.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            role="tab"
-            aria-selected={mTab === t.key}
-            onClick={() => setMTab(t.key)}
-            className={`h-9 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors ${
-              mTab === t.key
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-card/60 text-muted-foreground"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-3 grid gap-4 lg:mt-4 lg:grid-cols-12">
-        <div className="grid content-start gap-4 lg:col-span-3">
-          <div className="hidden lg:block">
-            <InfographicStats items={infographics} />
-          </div>
-          <div className={show("info")}>
-            <WorkerSlider />
-          </div>
+      <div className="mt-4 grid gap-4 lg:mt-0 xl:grid-cols-[minmax(0,1fr)_350px]">
+        <div className="xl:col-start-1 xl:row-start-1">
+          <HomeCarousel />
         </div>
-        <div className="grid content-start gap-4 lg:col-span-6">
+
+        <div
+          role="tablist"
+          aria-label="Panel informasi"
+          className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 lg:hidden"
+        >
+          {mobileTabs.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              role="tab"
+              aria-selected={mTab === t.key}
+              onClick={() => setMTab(t.key)}
+              className={`h-9 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors ${
+                mTab === t.key
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card/60 text-muted-foreground"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Kolom utama: papan informasi + berita, lalu slide pekerja + suku bunga */}
+        <div className="grid content-start gap-4 lg:grid-cols-2 xl:col-start-1 xl:row-start-2">
           <div className={show("info")}>
             <InfoBoard />
           </div>
           <div className={show("berita")}>
             <NewsPanel />
           </div>
-        </div>
-        <div className="grid content-start gap-4 lg:col-span-3">
-          <div className={show("pasar")}>
-            <MarketPanel />
+          <div className={show("info")}>
+            <WorkerSlider />
           </div>
           <div className={show("pasar")}>
             <BankRatesPanel />
+          </div>
+        </div>
+
+        {/* Rel kanan (desktop lebar): infografis, pasar, agenda */}
+        <div className="grid content-start gap-4 md:grid-cols-2 xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:grid-cols-1">
+          <div className="hidden lg:block">
+            <InfographicStats items={infographics} />
+          </div>
+          <div className={show("pasar")}>
+            <MarketPanel />
           </div>
           <div className={show("agenda")}>
             <UpcomingEvents />
