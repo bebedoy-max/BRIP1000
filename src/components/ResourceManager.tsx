@@ -1,5 +1,6 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { PageEditContext } from "@/components/AdminLayout";
+import { ipDisplay } from "@/lib/ip";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
@@ -514,6 +515,7 @@ export function ResourceManager({
     }
 
     if (v === null || v === undefined || v === "") return "";
+    if (f.type === "ip" || f.key === "ip_address") return ipDisplay(v);
     if (f.type === "datetime") return new Date(String(v)).toLocaleString("id-ID");
     if (f.type === "date") return `${String(v)} ${new Date(String(v)).toLocaleDateString("id-ID")}`;
     return String(v);
@@ -624,6 +626,7 @@ export function ResourceManager({
           entityId={String(row["id"] ?? "")}
         />
       );
+    if (f.type === "ip" || f.key === "ip_address") return ipDisplay(v);
     if (f.type === "datetime") return new Date(String(v)).toLocaleString("id-ID");
     return String(v);
   }

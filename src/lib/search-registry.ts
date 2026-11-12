@@ -1,3 +1,5 @@
+import { ipDisplay } from "@/lib/ip";
+
 export type SearchRef = {
   /** Kolom foreign key pada tabel modul. */
   column: string;
@@ -70,7 +72,8 @@ export const searchModules: SearchModule[] = [
     route: "/admin/atm",
     refs: [ukerRef()],
     title: (r) => s(r["tid"]) || s(r["kode_atm"]),
-    subtitle: (r) => [s(r["lokasi"]), s(r["merk"]), s(r["ip_address"])].filter(Boolean).join(" · "),
+    subtitle: (r) =>
+      [s(r["lokasi"]), s(r["merk"]), ipDisplay(r["ip_address"])].filter(Boolean).join(" · "),
   },
   {
     table: "crm_machines",
@@ -78,7 +81,8 @@ export const searchModules: SearchModule[] = [
     route: "/admin/crm",
     refs: [ukerRef()],
     title: (r) => s(r["tid"]),
-    subtitle: (r) => [s(r["lokasi"]), s(r["merk"]), s(r["ip_address"])].filter(Boolean).join(" · "),
+    subtitle: (r) =>
+      [s(r["lokasi"]), s(r["merk"]), ipDisplay(r["ip_address"])].filter(Boolean).join(" · "),
   },
   {
     table: "edc_machines",
@@ -102,7 +106,11 @@ export const searchModules: SearchModule[] = [
     route: "/admin/perangkat",
     refs: [
       ukerRef(),
-      { column: "jenis_id", table: "device_types", labelColumns: ["jenis_perangkat", "level_fungsi"] },
+      {
+        column: "jenis_id",
+        table: "device_types",
+        labelColumns: ["jenis_perangkat", "level_fungsi"],
+      },
       { column: "pengguna_id", table: "employees", labelColumns: ["nama", "personal_number"] },
     ],
     title: (r) => s(r["nama_perangkat"]),
@@ -151,7 +159,6 @@ export const searchModules: SearchModule[] = [
     need: "event",
   },
   {
-
     table: "audit_logs",
     label: "Audit Log",
     route: "/admin/audit",

@@ -14,6 +14,8 @@ import { PhotoGallery } from "@/components/PhotoGallery";
 import { MapsLink } from "@/components/MapsLink";
 import { EmployeeProfileLink } from "@/components/EmployeeProfileLink";
 import { useDetailAccess } from "@/lib/access";
+import { useRoles } from "@/lib/roles";
+import { ipDisplay } from "@/lib/ip";
 
 const db = supabase as unknown as SupabaseClient;
 
@@ -62,14 +64,20 @@ export function UkerProfileLink({
   deskripsi?: string | null | undefined;
 }) {
   const [open, setOpen] = useState(false);
+  // IP Address unit kerja tergolong data sensitif: hanya diminta & ditampilkan untuk IT Admin.
+  const { isItAdmin } = useRoles();
 
   const detail = useQuery<Record<string, unknown> | null>({
-    queryKey: ["uker-profile-detail", ukerId],
+    queryKey: ["uker-profile-detail", ukerId, isItAdmin],
     enabled: open && !!ukerId,
     queryFn: async () => {
       const { data, error } = await db
         .from("ukers")
-        .select("alamat,titik_maps,deskripsi,updated_at,created_at")
+        .select(
+          isItAdmin
+            ? "alamat,titik_maps,deskripsi,ip_address,updated_at,created_at"
+            : "alamat,titik_maps,deskripsi,updated_at,created_at",
+        )
         .eq("id", ukerId)
         .maybeSingle();
       if (error) throw error;
@@ -153,6 +161,9 @@ export function UkerProfileLink({
               <Field label="Titik Maps">
                 <MapsLink value={maps} name={nama} photoEntity="uker" entityId={ukerId} />
               </Field>
+              {isItAdmin ? (
+                <Field label="IP Address">{ipDisplay(row["ip_address"]) || "—"}</Field>
+              ) : null}
               <Field label="Profile" align="start">
                 <span className="block min-h-24 whitespace-pre-line">
                   {profil || "Belum ada deskripsi profil untuk unit kerja ini."}

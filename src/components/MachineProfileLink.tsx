@@ -12,6 +12,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { PhotoGallery } from "@/components/PhotoGallery";
 import { MapsLink } from "@/components/MapsLink";
+import { ipDisplay } from "@/lib/ip";
 
 const db = supabase as unknown as SupabaseClient;
 
@@ -100,7 +101,7 @@ export function MachineProfileLink({
                   />
                 </Field>
                 <Field label="Merk">{d?.merk || "—"}</Field>
-                <Field label="IP Address">{d?.ip_address || "—"}</Field>
+                <Field label="IP Address">{ipDisplay(d?.ip_address) || "—"}</Field>
               </dl>
 
               <section className="space-y-2">
