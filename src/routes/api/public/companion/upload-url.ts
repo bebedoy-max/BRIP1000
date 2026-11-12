@@ -46,11 +46,14 @@ export const Route = createFileRoute("/api/public/companion/upload-url")({
           const token = await drive.accessToken(acc);
           const folderId = await drive.ensureEntityFolder(acc, token, "event", payload.subfolder);
 
+          // Origin diteruskan agar sesi upload Google mengizinkan PUT langsung dari browser (CORS).
+          const origin = request.headers.get("origin");
           const res = await fetch(
             "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,webViewLink",
             {
               method: "POST",
               headers: {
+                ...(origin ? { Origin: origin } : {}),
                 Authorization: `Bearer ${token}`,
                 "content-type": "application/json; charset=UTF-8",
                 "X-Upload-Content-Type": payload.mimeType || "image/jpeg",

@@ -1,0 +1,9 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+requests>=2.31
+numpy<2
+opencv-python-headless>=4.8
+pillow>=10
+onnxruntime>=1.17
+insightface>=0.7.3

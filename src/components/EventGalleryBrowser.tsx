@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowLeft, CalendarDays, Info, Pencil, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarDays, Info, Pencil, Search, Trash2, Upload } from "lucide-react";
+import { EventUploadDialog } from "@/components/EventUploadDialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ export function EventGalleryBrowser() {
   const [editing, setEditing] = useState<EventRow | null>(null);
   const [form, setForm] = useState({ nama_event: "", deskripsi: "", tanggal_mulai: "" });
   const [saving, setSaving] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const { isEventAdmin, isItAdmin } = useRoles();
   const canManage = isEventAdmin || isItAdmin;
   const confirm = useConfirm();
@@ -98,7 +100,6 @@ export function EventGalleryBrowser() {
       toast.error((err as Error).message);
     }
   }
-
 
   const events = useQuery({
     queryKey: ["event-gallery-events"],
@@ -246,14 +247,19 @@ export function EventGalleryBrowser() {
             className="w-44"
             placeholder="Filter tanggal"
           />
+          {canManage ? (
+            <Button onClick={() => setUploadOpen(true)}>
+              <Upload className="size-4" /> Upload
+            </Button>
+          ) : null}
         </div>
       </div>
 
       <div className="glass-card flex items-start gap-3 p-4 text-sm text-muted-foreground">
         <Info className="mt-0.5 size-4 shrink-0" />
         <p>
-          Unggah dan pemrosesan foto event kini dilakukan lewat aplikasi companion SuperIT (lihat
-          menu <strong>Apps Ext</strong>). Halaman ini hanya menampilkan hasilnya.
+          Unggah foto event lewat tombol <strong>Upload</strong> (pembacaan wajah memakai mesin di
+          VPS) atau lewat aplikasi companion SuperIT (menu <strong>Apps Ext</strong>).
         </p>
       </div>
 
@@ -286,11 +292,7 @@ export function EventGalleryBrowser() {
                   <Button size="sm" variant="secondary" onClick={() => openEdit(e)}>
                     <Pencil className="size-4" /> Edit
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => void handleDeleteEvent(e)}
-                  >
+                  <Button size="sm" variant="destructive" onClick={() => void handleDeleteEvent(e)}>
                     <Trash2 className="size-4" /> Hapus
                   </Button>
                 </div>
@@ -300,6 +302,11 @@ export function EventGalleryBrowser() {
         </div>
       )}
       {editDialog}
+      <EventUploadDialog
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        onDone={() => void Promise.all([events.refetch(), counts.refetch()])}
+      />
     </div>
   );
 }
