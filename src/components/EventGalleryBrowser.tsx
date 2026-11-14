@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { ArrowLeft, CalendarDays, Info, Pencil, Search, Trash2, Upload } from "lucide-react";
 import { EventUploadDialog } from "@/components/EventUploadDialog";
+import { faceServiceOnline } from "@/lib/face-service";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,13 @@ export function EventGalleryBrowser() {
   const [form, setForm] = useState({ nama_event: "", deskripsi: "", tanggal_mulai: "" });
   const [saving, setSaving] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const engine = useQuery({
+    queryKey: ["face-engine-online"],
+    queryFn: faceServiceOnline,
+    refetchInterval: 20000,
+    refetchOnWindowFocus: true,
+  });
+  const engineOnline = engine.data === true;
   const { isEventAdmin, isItAdmin } = useRoles();
   const canManage = isEventAdmin || isItAdmin;
   const confirm = useConfirm();
@@ -248,7 +256,17 @@ export function EventGalleryBrowser() {
             placeholder="Filter tanggal"
           />
           {canManage ? (
-            <Button onClick={() => setUploadOpen(true)}>
+            <Button
+              onClick={() => setUploadOpen(true)}
+              disabled={!engineOnline}
+              title={
+                engineOnline
+                  ? "Upload foto event"
+                  : engine.isLoading
+                    ? "Memeriksa mesin wajah…"
+                    : "Mesin wajah belum aktif"
+              }
+            >
               <Upload className="size-4" /> Upload
             </Button>
           ) : null}
