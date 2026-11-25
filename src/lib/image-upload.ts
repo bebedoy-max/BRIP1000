@@ -1,8 +1,10 @@
 /**
- * Siapkan foto untuk diunggah lewat server function (base64 dalam JSON).
- * Foto kamera HP bisa 3–10 MB; setelah base64 permintaannya ditolak server
- * hosting ("Request Entity Too Large"). Foto besar diperkecil & dikompres
- * jadi JPEG di browser sebelum dikirim.
+ * Upload foto ke Google Drive.
+ * - Foto besar diperkecil & dikompres jadi JPEG di browser (hemat kuota HP).
+ * - Isi foto dikirim LANGSUNG dari browser ke Google Drive (resumable upload);
+ *   server aplikasi hanya membuat sesi upload & mencatat hasilnya.
+ * - Jika upload langsung gagal, foto kecil dikirim lewat server (base64)
+ *   sebagai cadangan. Vercel menolak body > ±4,5 MB ("Request Entity Too Large").
  */
 const SKIP_BELOW_BYTES = 1_200_000; // foto kecil dikirim apa adanya
 const TARGET_BYTES = 1_500_000; // target ukuran setelah kompres
@@ -36,13 +38,13 @@ function canvasToBlob(canvas: HTMLCanvasElement, quality: number) {
   return new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
 }
 
-export async function prepareImageUpload(
-  file: File,
-): Promise<{ fileName: string; mimeType: string; base64: string }> {
-  const passthrough = async () => ({
+export type PreparedImage = { blob: Blob; fileName: string; mimeType: string };
+
+export async function prepareImage(file: File): Promise<PreparedImage> {
+  const passthrough = async (): Promise<PreparedImage> => ({
+    blob: file,
     fileName: file.name,
     mimeType: file.type || "image/jpeg",
-    base64: await readAsBase64(file),
   });
   if (file.size <= SKIP_BELOW_BYTES || file.type === "image/gif") return passthrough();
 
@@ -77,7 +79,51 @@ export async function prepareImageUpload(
 
   if (!best || best.size >= file.size) return passthrough();
   const base = file.name.replace(/\.[^.]+$/, "") || "foto";
-  return { fileName: `${base}.jpg`, mimeType: "image/jpeg", base64: await readAsBase64(best) };
+  return { blob: best, fileName: `${base}.jpg`, mimeType: "image/jpeg" };
+}
+
+/** Kirim isi file langsung ke URL sesi resumable Drive; hasilnya ID file. */
+async function putToDrive(uploadUrl: string, img: PreparedImage) {
+  const res = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": img.mimeType },
+    body: img.blob,
+  });
+  if (!res.ok) throw new Error(`Upload ke Google Drive gagal [${res.status}]`);
+  const json = (await res.json()) as { id?: string };
+  if (!json.id) throw new Error("Google Drive tidak mengembalikan ID file");
+  return json.id;
+}
+
+/** Batas aman jalur cadangan lewat server (base64 ±33% lebih besar). */
+const FALLBACK_MAX_BYTES = 3_000_000;
+
+/**
+ * Upload satu foto: langsung ke Drive, atau cadangan lewat server.
+ * `start` membuat sesi, `finish` mencatat file, `viaServer` jalur lama base64.
+ */
+export async function uploadImageToDrive<T>(
+  file: File,
+  api: {
+    start: (meta: { fileName: string; mimeType: string; size: number }) => Promise<{
+      uploadUrl: string;
+    }>;
+    finish: (meta: { fileId: string; fileName: string; mimeType: string }) => Promise<T>;
+    viaServer: (meta: { fileName: string; mimeType: string; base64: string }) => Promise<T>;
+  },
+): Promise<T> {
+  const img = await prepareImage(file);
+  const meta = { fileName: img.fileName, mimeType: img.mimeType };
+  let fileId: string;
+  try {
+    const { uploadUrl } = await api.start({ ...meta, size: img.blob.size });
+    fileId = await putToDrive(uploadUrl, img);
+  } catch (e) {
+    if (img.blob.size > FALLBACK_MAX_BYTES) throw e;
+    console.warn("Upload langsung ke Drive gagal, pakai jalur server:", e);
+    return api.viaServer({ ...meta, base64: await readAsBase64(img.blob) });
+  }
+  return api.finish({ ...meta, fileId });
 }
 
 /** Pesan error yang lebih jelas untuk penolakan ukuran dari server. */

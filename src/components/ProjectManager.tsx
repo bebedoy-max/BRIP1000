@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { prepareImageUpload, uploadErrorMessage } from "@/lib/image-upload";
+import { uploadImageToDrive, uploadErrorMessage } from "@/lib/image-upload";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ImagePlus, Pencil, Plus, Search, Trash2, ListChecks } from "lucide-react";
 import { toast } from "sonner";
@@ -34,7 +34,11 @@ import {
 } from "@/lib/projects";
 import { slideImageSrc } from "@/lib/carousel";
 import { useServerFn } from "@tanstack/react-start";
-import { uploadProjectImage } from "@/lib/project-photo.functions";
+import {
+  uploadProjectImage,
+  startProjectImageUpload,
+  finishProjectImageUpload,
+} from "@/lib/project-photo.functions";
 
 const db = supabase as unknown as SupabaseClient;
 
@@ -73,11 +77,15 @@ export function ProjectManager({ canWrite }: { canWrite: boolean }) {
   const [customOpen, setCustomOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const uploadFn = useServerFn(uploadProjectImage);
+  const startUploadFn = useServerFn(startProjectImageUpload);
+  const finishUploadFn = useServerFn(finishProjectImageUpload);
 
   const uploadImage = useMutation({
-    mutationFn: async (file: File) =>
-      uploadFn({
-        data: await prepareImageUpload(file),
+    mutationFn: (file: File) =>
+      uploadImageToDrive(file, {
+        start: (meta) => startUploadFn({ data: meta }),
+        finish: (meta) => finishUploadFn({ data: { fileId: meta.fileId } }),
+        viaServer: (meta) => uploadFn({ data: meta }),
       }),
     onSuccess: (res) => {
       setForm((f) => ({ ...f, foto_url: res.id }));

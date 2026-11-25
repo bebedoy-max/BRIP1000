@@ -8,10 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { driveImageUrl, type PhotoEntity } from "@/lib/drive-entities";
-import { uploadEntityPhoto, deleteEntityPhoto } from "@/lib/drive.functions";
+import {
+  uploadEntityPhoto,
+  deleteEntityPhoto,
+  startEntityPhotoUpload,
+  finishEntityPhotoUpload,
+} from "@/lib/drive.functions";
 import { purgeMissingPhoto } from "@/lib/photo-cleanup.functions";
 import { PhotoStage } from "@/components/PhotoStage";
-import { prepareImageUpload, uploadErrorMessage } from "@/lib/image-upload";
+import { uploadImageToDrive, uploadErrorMessage } from "@/lib/image-upload";
 
 const db = supabase as unknown as SupabaseClient;
 
@@ -39,6 +44,8 @@ export function PhotoGallery({
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const upload = useServerFn(uploadEntityPhoto);
+  const startUpload = useServerFn(startEntityPhotoUpload);
+  const finishUpload = useServerFn(finishEntityPhotoUpload);
   const remove = useServerFn(deleteEntityPhoto);
   const purge = useServerFn(purgeMissingPhoto);
   const [broken, setBroken] = useState<string[]>([]);
@@ -69,14 +76,12 @@ export function PhotoGallery({
 
   const uploading = useMutation({
     mutationFn: async (files: File[]) => {
+      const target = { entity, entityId, subfolder };
       for (const file of files) {
-        await upload({
-          data: {
-            entity,
-            entityId,
-            ...(await prepareImageUpload(file)),
-            subfolder,
-          },
+        await uploadImageToDrive(file, {
+          start: (meta) => startUpload({ data: { ...target, ...meta } }),
+          finish: (meta) => finishUpload({ data: { ...target, ...meta } }),
+          viaServer: (meta) => upload({ data: { ...target, ...meta } }),
         });
       }
     },

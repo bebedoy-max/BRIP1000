@@ -204,6 +204,101 @@ export const uploadEntityPhoto = createServerFn({ method: "POST" })
     return { id: file.id };
   });
 
+const MAX_DIRECT_BYTES = 25 * 1024 * 1024;
+
+/**
+ * Langkah 1 upload langsung: buat sesi resumable Drive. Isi foto dikirim
+ * browser langsung ke Google Drive, tidak lewat server aplikasi (Vercel).
+ */
+export const startEntityPhotoUpload = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (input: {
+      entity: string;
+      entityId: string;
+      fileName: string;
+      mimeType: string;
+      size: number;
+      subfolder?: string | undefined;
+    }) => {
+      if (!isPhotoEntity(input.entity)) throw new Error("Jenis data tidak dikenal.");
+      if (!input.mimeType.startsWith("image/")) throw new Error("File harus berupa gambar.");
+      if (!(input.size > 0) || input.size > MAX_DIRECT_BYTES)
+        throw new Error("Ukuran foto maksimal 25 MB.");
+      return input;
+    },
+  )
+  .handler(async ({ data, context }) => {
+    const { assertAdmin } = await import("@/lib/drive-guard.server");
+    await assertAdmin(context.supabase, context.userId);
+    const drive = await import("@/lib/drive.server");
+    const acc = await drive.getActiveAccount();
+    const token = await drive.accessToken(acc);
+    const folderId = await drive.ensureEntityFolder(
+      acc,
+      token,
+      data.entity as PhotoEntity,
+      data.subfolder,
+    );
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const uploadUrl = await drive.createResumableSession({
+      token,
+      folderId,
+      name: `${data.entity}_${data.entityId}_${stamp}_${data.fileName}`,
+      mimeType: data.mimeType,
+      size: data.size,
+      origin: drive.requestOrigin(),
+    });
+    return { uploadUrl };
+  });
+
+/** Langkah 2 upload langsung: cek file di Drive lalu catat ke galeri. */
+export const finishEntityPhotoUpload = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (input: {
+      entity: string;
+      entityId: string;
+      fileId: string;
+      fileName: string;
+      mimeType: string;
+      subfolder?: string | undefined;
+    }) => {
+      if (!isPhotoEntity(input.entity)) throw new Error("Jenis data tidak dikenal.");
+      if (!/^[\w-]{10,200}$/.test(input.fileId)) throw new Error("ID file tidak valid.");
+      return input;
+    },
+  )
+  .handler(async ({ data, context }) => {
+    const { assertAdmin } = await import("@/lib/drive-guard.server");
+    await assertAdmin(context.supabase, context.userId);
+    const drive = await import("@/lib/drive.server");
+    const acc = await drive.getActiveAccount();
+    const token = await drive.accessToken(acc);
+    const folderId = await drive.ensureEntityFolder(
+      acc,
+      token,
+      data.entity as PhotoEntity,
+      data.subfolder,
+    );
+    const file = await drive.finalizeDirectUpload(token, data.fileId, folderId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = supabaseAdmin as unknown as { from: (t: string) => any };
+    const { error } = await db.from("entity_photos").insert({
+      entity_type: data.entity,
+      entity_id: data.entityId,
+      drive_file_id: file.id,
+      file_name: data.fileName,
+      mime_type: file.mimeType,
+      view_url: file.webViewLink ?? null,
+      thumbnail_url: `https://drive.google.com/thumbnail?id=${file.id}&sz=w1000`,
+      account_id: acc.id,
+      uploaded_by: context.userId,
+    });
+    if (error) throw new Error(error.message);
+    return { id: file.id };
+  });
+
 export const deleteEntityPhoto = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { id: string }) => input)

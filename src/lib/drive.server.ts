@@ -1,4 +1,5 @@
 // Helper server-only untuk Google Drive (tidak boleh diimpor dari browser).
+import { getRequest } from "@tanstack/react-start/server";
 import { photoEntities, type PhotoEntity } from "@/lib/drive-entities";
 
 export type DriveAccount = {
@@ -148,6 +149,76 @@ export async function uploadToDrive(opts: {
     body: JSON.stringify({ role: "reader", type: "anyone" }),
   });
 
+  return file;
+}
+
+/** Origin web app pemanggil (untuk izin CORS sesi upload Drive). */
+export function requestOrigin() {
+  const req = getRequest();
+  const origin = req?.headers.get("origin");
+  if (origin && /^https?:\/\/[^/]+$/.test(origin)) return origin;
+  return req ? new URL(req.url).origin : "";
+}
+
+/**
+ * Buat sesi resumable upload Drive. Browser lalu mengirim isi file langsung ke
+ * URL sesi ini (tanpa lewat server aplikasi). `origin` wajib agar Google
+ * mengizinkan CORS dari web app.
+ */
+export async function createResumableSession(opts: {
+  token: string;
+  folderId: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  origin: string;
+}) {
+  const res = await fetch(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${opts.token}`,
+        "content-type": "application/json; charset=UTF-8",
+        "X-Upload-Content-Type": opts.mimeType,
+        "X-Upload-Content-Length": String(opts.size),
+        Origin: opts.origin,
+      },
+      body: JSON.stringify({ name: opts.name, parents: [opts.folderId] }),
+    },
+  );
+  const url = res.headers.get("location");
+  if (!res.ok || !url) {
+    throw new Error(`Drive upload session error [${res.status}]: ${await res.text()}`);
+  }
+  return url;
+}
+
+/**
+ * Pastikan file hasil upload langsung memang berada di folder yang benar,
+ * lalu jadikan bisa dilihat lewat tautan.
+ */
+export async function finalizeDirectUpload(token: string, fileId: string, folderId: string) {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=id,name,mimeType,parents,webViewLink`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Drive file error [${res.status}]: ${text}`);
+  const file = JSON.parse(text) as {
+    id: string;
+    name: string;
+    mimeType: string;
+    parents?: string[];
+    webViewLink?: string;
+  };
+  if (!file.parents?.includes(folderId)) throw new Error("File tidak berada di folder tujuan.");
+  if (!file.mimeType.startsWith("image/")) throw new Error("File harus berupa gambar.");
+  await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}/permissions`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify({ role: "reader", type: "anyone" }),
+  });
   return file;
 }
 
