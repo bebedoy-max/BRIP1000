@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { prepareImageUpload, uploadErrorMessage } from "@/lib/image-upload";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ImagePlus, Pencil, Plus, Search, Trash2, ListChecks } from "lucide-react";
 import { toast } from "sonner";
@@ -73,24 +74,16 @@ export function ProjectManager({ canWrite }: { canWrite: boolean }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const uploadFn = useServerFn(uploadProjectImage);
 
-  const toBase64 = (file: File) =>
-    new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
-      reader.onerror = () => reject(new Error("Gagal membaca file"));
-      reader.readAsDataURL(file);
-    });
-
   const uploadImage = useMutation({
     mutationFn: async (file: File) =>
       uploadFn({
-        data: { fileName: file.name, mimeType: file.type, base64: await toBase64(file) },
+        data: await prepareImageUpload(file),
       }),
     onSuccess: (res) => {
       setForm((f) => ({ ...f, foto_url: res.id }));
       toast.success("Gambar project terunggah");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(uploadErrorMessage(e)),
   });
 
   const totals = useQuery({ queryKey: ["param-totals"], queryFn: fetchParamTotals });

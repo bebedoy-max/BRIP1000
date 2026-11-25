@@ -11,6 +11,7 @@ import { driveImageUrl, type PhotoEntity } from "@/lib/drive-entities";
 import { uploadEntityPhoto, deleteEntityPhoto } from "@/lib/drive.functions";
 import { purgeMissingPhoto } from "@/lib/photo-cleanup.functions";
 import { PhotoStage } from "@/components/PhotoStage";
+import { prepareImageUpload, uploadErrorMessage } from "@/lib/image-upload";
 
 const db = supabase as unknown as SupabaseClient;
 
@@ -19,15 +20,6 @@ type PhotoRow = {
   drive_file_id: string;
   file_name: string | null;
 };
-
-function toBase64(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
-    reader.onerror = () => reject(new Error("Gagal membaca file"));
-    reader.readAsDataURL(file);
-  });
-}
 
 /** Galeri foto sebuah data, tersimpan di Google Drive aplikasi. */
 export function PhotoGallery({
@@ -82,9 +74,7 @@ export function PhotoGallery({
           data: {
             entity,
             entityId,
-            fileName: file.name,
-            mimeType: file.type,
-            base64: await toBase64(file),
+            ...(await prepareImageUpload(file)),
             subfolder,
           },
         });
@@ -94,7 +84,10 @@ export function PhotoGallery({
       toast.success("Foto terunggah ke Google Drive");
       invalidate();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      toast.error(uploadErrorMessage(e));
+      invalidate();
+    },
   });
 
   const removing = useMutation({
